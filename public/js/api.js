@@ -82,6 +82,44 @@ async function getRepositories(username) {
   }
 }
 
+async function getForks(username, repository) {
+  const forksUrl = `https://api.github.com/repos/${username}/${repository}/forks`;
+  
+  try {
+    const response = await fetch(forksUrl, {
+      method: "GET",
+      headers: {
+        Authorization: `token ${authToken}`, // Include the auth token in the headers
+        Accept: "application/vnd.github.v3+json",
+      },
+    });
+
+    if (response.ok) {
+      const forks = await response.json();
+      console.log(`Forks of ${repository}:`);
+
+      let forksText = "";
+      forks.forEach((fork) => {
+        console.log(`- Fork Name: ${fork.name}, Description: ${fork.description}`);
+        forksText += `- Fork Name: ${fork.name}, Description: ${fork.description || "No description available."}\n`;
+      });
+
+      // Display forks information
+      document.getElementById("forks-status-text").textContent = `Forks:\n${forksText}`;
+    } else {
+      console.error(`Failed to fetch forks. Status: ${response.status}`);
+      document.getElementById("forks-status-text").textContent =
+        `Failed to fetch forks. Status: ${response.status}`;
+    }
+  } catch (error) {
+    console.error("Error fetching forks from GitHub API:", error);
+    document.getElementById("forks-status-text").textContent =
+      "Error fetching forks from GitHub API.";
+  }
+}
+
+// TO BE MADE REDUNDANT DUE TO GET REPOSITORY FORKS (POSSIBLY, IT IS STAYING FOR NOW)
+
 async function getRepositoryInfo(username, repository) {
   const repoUrl = `https://api.github.com/repos/${username}/${repository}`; // URL to fetch repo info
   const contentsUrl = `https://api.github.com/repos/${username}/${repository}/contents`; // URL to fetch contents of the root directory
@@ -184,7 +222,16 @@ async function fetchFile(username, repository, filePath) {
 
     if (response.ok) {
       const fileData = await response.json();
-      return JSON.parse(atob(fileData.content)); // Decode and parse the base64 content
+
+      // Decode the base64 content
+      const decodedContent = atob(fileData.content);
+
+      // Determine if the file is a JSON file based on its path or extension
+      if (filePath.endsWith(".json")) {
+        return JSON.parse(decodedContent); // Parse JSON content
+      } else {
+        return decodedContent; // Return as plain string for non-JSON files
+      }
     } else {
       console.error(`Error fetching file ${filePath}: ${response.status}`);
       return null; // Return null for error handling
@@ -209,21 +256,25 @@ async function getRepositoryManifest(username, repository) {
         repository,
         repoManifest.filePath
       );
+
       if (scriptFileData) {
         console.log(
           `Additional Data from ${repoManifest.filePath}:`,
           scriptFileData
         );
 
-        // Display the additional data in the <pre> tag
+        // Display the manifest data in the <pre> tag
         document.getElementById("manifest-data").textContent = JSON.stringify(
-          scriptFileData,
+          repoManifest,
           null,
           2
         ); // Pretty print JSON
+
+        // Display the script file content as a string
+        document.getElementById("manifest-script").textContent = scriptFileData; // Display JavaScript as a string
       } else {
         console.log(`No additional data found in ${repoManifest.filePath}`);
-        document.getElementById("manifest-data").textContent =
+        document.getElementById("manifest-script").textContent =
           "No additional data found in the specified file.";
       }
     } else {
