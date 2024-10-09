@@ -1,34 +1,37 @@
 require 'sqlite3'
 require 'pp'
-db = SQLite3::Database.new 'db/company.db'
-db.execute('DROP TABLE IF EXISTS employees')
-db.execute('CREATE TABLE employees
+
+# Connect to the SQLite database
+db = SQLite3::Database.new 'db/database.db'
+
+# Drop and recreate the 'login' table
+db.execute('DROP TABLE IF EXISTS login')
+db.execute('CREATE TABLE login
                (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                img VARCHAR(40),
                 name VARCHAR(255) NOT NULL,
-                email VARCHAR(255),
-                phone VARCHAR(20),
-                department_id INTEGER NOT NULL,
-                FOREIGN KEY(department_id) REFERENCES departments(id)
+                password INTEGER NOT NULL
                )')
-db.execute('DROP TABLE IF EXISTS departments')
-db.execute('CREATE TABLE departments
+
+# Drop and recreate the 'cache' table
+db.execute('DROP TABLE IF EXISTS cache')
+db.execute('CREATE TABLE cache
                (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name VARCHAR(255) NOT NULL UNIQUE)')
-rows = File.readlines('db/employee_data.csv')
-rows.shift #skip headers
-rows.each do |row|
-  columns = row.split(',')
-  #check if department already exists
-  department_name = columns.last.chomp
-  department_id = db.execute('SELECT id FROM departments WHERE name = ?', department_name).first
-  if department_id.nil?
-    #the department does not yet exist
-    db.execute('INSERT INTO departments (name) VALUES(?)', department_name)
-    #get id for the newly inserted department
-    department_id = db.execute('SELECT id FROM departments WHERE name = ?', department_name).first
-  end
-  db.execute('INSERT INTO employees (img, name, email, phone, department_id) VALUES (?,?,?,?,?)', [columns[0], columns[1], columns[2], columns[3], department_id])
-end
+                name VARCHAR(255) NOT NULL UNIQUE,
+                cacheinfo VARCHAR(255) NOT NULL
+               )')
+
+# Example data received from the user
+user_name = 'JohnDoe'
+user_password = 123456
+cache_info = 'example_cache_info'
+
+# Insert user data into the 'login' table
+db.execute('INSERT INTO login (name, password) VALUES (?, ?)', [user_name, user_password])
+
+# Insert data into the 'cache' table
+db.execute('INSERT INTO cache (name, cacheinfo) VALUES (?, ?)', [user_name, cache_info])
+
+# Verify the data insertion by printing the 'login' and 'cache' tables
 db.results_as_hash = true
-pp result = db.execute('SELECT * FROM employees')
+pp login_result = db.execute('SELECT * FROM login')
+pp cache_result = db.execute('SELECT * FROM cache')
