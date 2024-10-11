@@ -17,8 +17,8 @@ db.execute('CREATE TABLE users
 db.execute('DROP TABLE IF EXISTS cache')
 db.execute('CREATE TABLE cache
                (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                cacheinfo TEXT NOT NULL
+                name VARCHAR(255) NOT NULL UNIQUE,
+                cacheinfo VARCHAR(255) NOT NULL
                )')
 
 # Drop and recreate the 'forks' table
@@ -42,6 +42,8 @@ cache_info = 'example_cache_info'
 
 # Insert user data into the 'users' table
 db.execute('INSERT INTO users (name, password) VALUES (?, ?)', [user_name, user_password])
+
+
 
 # Insert data into the 'cache' table
 db.execute('INSERT INTO cache (name, cacheinfo) VALUES (?, ?)', [user_name, cache_info])
