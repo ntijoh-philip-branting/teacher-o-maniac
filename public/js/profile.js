@@ -1,16 +1,19 @@
 class Profile extends HTMLElement {
-
   constructor() {
-    console.log("Generating Profile Page")
+    console.log("Generating Profile Page");
     super();
     this.attachShadow({ mode: "open" });
     this.initialize();
   }
 
   async initialize() {
-    this.user = await this.fetchUser();
-    console.log(`Fetched... ${this.user}`)
-    if (this.user) {
+    this.shadowRoot.innerHTML = "<p>Loading user data...</p>"; // Show loading state
+    const data = await this.fetchUser();
+    console.log(`Fetched data: ${data}`);
+    
+    if (data && data.user) {
+        this.user = data.user
+      this.shadowRoot.innerHTML = ""; // Clear loading state
       this.shadowRoot.appendChild(this.#template());
     } else {
       this.shadowRoot.innerHTML = "<p>Error fetching user data</p>";
@@ -20,9 +23,11 @@ class Profile extends HTMLElement {
   async fetchUser() {
     try {
       const response = await fetch("/api/user", { method: "GET" });
-      console.log("Fetching user DATA")
+      console.log("Fetching user DATA");
       if (!response.ok) throw new Error("Failed to fetch user data");
-      return await response.json();
+      const data = await response.json();
+      console.log("User data received:", data); // Log the user data
+      return data;
     } catch (err) {
       console.error(err);
       return null;
@@ -32,11 +37,18 @@ class Profile extends HTMLElement {
   #template() {
     const template = document.createElement("template");
 
-    template.innerHTML = `
+    if (this.user) {
+      template.innerHTML = `
           <img src="${this.user.avatar_url}" alt="Image not found">
-          <h1>Välkommen ${this.user.name}</h1>
+          <h1>Välkommen ${this.user.username}</h1>
           <pre>Repos: ${this.user.public_repos}</pre>
           `;
+      
+    } else {
+        template.innerHTML = `
+          <p>User Data is not available</p>
+        `
+    }
     return template.content.cloneNode(true);
   }
 }

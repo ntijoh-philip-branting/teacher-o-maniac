@@ -7,9 +7,9 @@ document.addEventListener("DOMContentLoaded", function () {
       console.log("Attempting User Verification");
       const usr_status = await fetchUserStatus();
 
-      if (usr_status === false) {
+      if (!usr_status.logged_in) {
         // Replace with your GitHub OAuth App Client ID and redirect URI
-        const clientId = getClientID(); // Call the function to get the Client ID
+        const clientId = getClientID();
         const redirectUri = "http://localhost:9292/callback"; // Your full callback URL
 
         // Construct the GitHub OAuth URL
@@ -17,8 +17,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // Redirect the user to GitHub's OAuth page
         window.location.href = githubAuthUrl;
-      } else if (usr_status === true) {
-        const profileElement = document.createElement("profile-element");
+      } else {
+        const profileElement = document.createElement("user-profile");
+
+        document.body.innerHTML = "";
+        
         document.body.appendChild(profileElement);
       }
     });
@@ -29,11 +32,11 @@ async function fetchUserStatus() {
 
   if (response.ok) {
     const data = await response.json();
-    if (data.logged_in === true) {
-      console.log(`User ${data.user} already logged in`);
-      return true;
+    if (data.logged_in) {
+      console.log(`User ${data.user.username} already logged in`);
+      return { logged_in: true, user: data.user };
     }
   }
   console.log(`No user logged in, requesting Logon`);
-  return false;
+  return { logged_in: false, user: null };
 }

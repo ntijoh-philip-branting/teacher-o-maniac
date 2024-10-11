@@ -25,19 +25,33 @@ class Backend < Sinatra::Base
   CLIENT_SECRET = ENV['CLIENT_SECRET']
   REDIRECT_URI = 'http://localhost:9292/callback'
 
+  get '/seed' do
+    @logger.info("GET /seed called")
+    seeder = DatabaseSeeder.new
+    seeder.create_tables
+    redirect '/'
+  end
+  
   get '/' do
     logged_in = !!session[:github_user_id]
-    erb :index, locals: { logged_in: logged_in }
+    erb :apiTestcases, locals: { logged_in: logged_in }
   end
 
   get '/api/login-status' do
+    @logger.info("GET /api/login-status called")
     content_type :json
     { logged_in: !!session[:github_user_id], user: session[:github_user_id] }.to_json
   end
 
   get '/callback' do
+    @logger.info("GET /callback called with params: #{params.inspect}")
     code = params[:code]
-    @logger.info("Issuing Callback with code: #{code}")
+
+    # Ensure the code is present
+    unless code
+      @logger.error("No code provided in the callback.")
+      halt 400, { error: 'No code provided.' }.to_json
+    end
 
     response = HTTParty.post('https://github.com/login/oauth/access_token', {
       body: {
@@ -63,7 +77,8 @@ class Backend < Sinatra::Base
       user_data = JSON.parse(user_response.body)
       store_user_info(user_data)
       session[:github_user_id] = user_data['id']
-      erb :user_profile, locals: { user: user_data }
+      @logger.info("User successfully authenticated: #{user_data['login']}")
+      redirect '/'
     else
       @logger.error("Authentication failed: #{token_info}")
       status 500
@@ -72,32 +87,57 @@ class Backend < Sinatra::Base
   end
 
   def store_user_info(user_data)
-    db.execute('INSERT OR REPLACE INTO users (github_id, username, name, avatar_url, html_url, public_repos) VALUES (?, ?, ?, ?, ?, ?)',
-    user_data['id'],
-    user_data['login'],
-    user_data['name'],
-    user_data['avatar_url'],
-    user_data['html_url'],
-    user_data['public_repos'])
+    @logger.info("Storing user info for github_id: #{user_data['id']}")
+    db.execute('INSERT OR REPLACE INTO users (github_id, username, name, avatar_url, html_url, public_repos) VALUES (?, ?, ?, ?, ?, ?)', [
+      user_data['id'],
+      user_data['login'],
+      user_data['name'],
+      user_data['avatar_url'],
+      user_data['html_url'],
+      user_data['public_repos']
+    ])
     @logger.info("User info stored for github_id: #{user_data['id']}")
   end
 
   get '/api/user' do
+    @logger.info("GET /api/user called")
+    @logger.info("Session data: #{session.inspect}")
+    
     content_type :json
     github_user_id = session[:github_user_id]
+  
+    if github_user_id.nil?
+      @logger.warn("No user logged in. Session user ID is nil.")
+      status 401
+      return { logged_in: false, user: nil }.to_json
+    else
+      @logger.info("User is logged in with github_user_id: #{github_user_id}")
+    end
+  
     user_info = db.execute('SELECT * FROM users WHERE github_id = ?', github_user_id).first
-
+  
     if user_info
-      user_info.to_json
+      @logger.info("User info retrieved: #{user_info.inspect}")
+      { logged_in: true, user: user_info }.to_json
     else
       @logger.warn("User not found for github_id: #{github_user_id}")
       status 404
-      { error: 'User not found' }.to_json
+      { logged_in: false, user: nil }.to_json
     end
   end
+  
+  
 
   post '/login' do
+    @logger.info("POST /login called with params: #{params.inspect}")
     content_type :json
+
+    # Validate required params
+    unless params[:name] && params[:password]
+      @logger.error("Missing login parameters.")
+      halt 400, { error: 'Missing username or password.' }.to_json
+    end
+
     user = db.execute('SELECT * FROM users WHERE name = ?', params[:name]).first
 
     if user && BCrypt::Password.new(user['password']) == params[:password]
@@ -111,12 +151,14 @@ class Backend < Sinatra::Base
   end
 
   post '/logout' do
+    @logger.info("POST /logout called")
     session.clear
     @logger.info("User logged out.")
     { result: 'success', message: 'Logout successful!' }.to_json
   end
 
   get '/cache/:id' do
+    @logger.info("GET /cache/#{params[:id]} called")
     content_type :json
     cache_entry = db.execute('SELECT * FROM cache WHERE id = ?', params[:id]).first
 
@@ -129,20 +171,37 @@ class Backend < Sinatra::Base
   end
 
   post '/cache' do
+    @logger.info("POST /cache called with params: #{params.inspect}")
     content_type :json
+
+    # Validate required params
+    unless params[:name] && params[:cacheinfo]
+      @logger.error("Missing cache parameters.")
+      halt 400, { error: 'Missing name or cache info.' }.to_json
+    end
+
     db.execute('INSERT INTO cache (name, cacheinfo) VALUES (?, ?)', [params[:name], params[:cacheinfo]])
     @logger.info("Cache entry created for name: #{params[:name]}")
     { result: 'success', message: 'Cache entry created!' }.to_json
   end
 
   put '/cache/:id' do
+    @logger.info("PUT /cache/#{params[:id]} called with params: #{params.inspect}")
     content_type :json
+
+    # Validate required params
+    unless params[:cacheinfo]
+      @logger.error("Missing cache info for update.")
+      halt 400, { error: 'Missing cache info.' }.to_json
+    end
+
     db.execute('UPDATE cache SET cacheinfo = ? WHERE id = ?', [params[:cacheinfo], params[:id]])
     @logger.info("Cache entry updated for id: #{params[:id]}")
     { result: 'success', message: 'Cache entry updated!' }.to_json
   end
 
   delete '/cache/:id' do
+    @logger.info("DELETE /cache/#{params[:id]} called")
     content_type :json
     db.execute('DELETE FROM cache WHERE id = ?', params[:id])
     @logger.info("Cache entry deleted for id: #{params[:id]}")

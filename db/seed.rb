@@ -25,14 +25,6 @@ class DatabaseSeeder
     puts 'Tables have been created successfully!'
   end
 
-  # Insert example data into tables
-  def seed_example_data
-    seed_local_user
-    seed_github_user
-    seed_cache_data
-    verify_data_insertion
-  end
-
   private
 
   # Drop and recreate the 'users' table with GitHub data fields
@@ -79,30 +71,4 @@ class DatabaseSeeder
     SQL
     )
   end
-
-  # Seed example data for a local user (non-GitHub)
-  def seed_local_user
-    local_user_name = 'JohnDoe'
-    local_user_password = BCrypt::Password.create('123456')
-    @db.execute('INSERT INTO users (name, password) VALUES (?, ?)', [local_user_name, local_user_password])
-  end
-
-
-  # Seed example data for the cache table
-  def seed_cache_data
-    cache_name = 'example_cache_entry'
-    cache_info = 'example_cache_info'
-    @db.execute('INSERT INTO cache (name, cacheinfo) VALUES (?, ?)', [cache_name, cache_info])
-  end
-
-  # Verify the data insertion by printing the 'users' and 'cache' tables
-  def verify_data_insertion
-    pp user_result = @db.execute('SELECT * FROM users')
-    pp cache_result = @db.execute('SELECT * FROM cache')
-  end
 end
-
-# Usage example:
-seeder = DatabaseSeeder.new
-seeder.create_tables
-seeder.seed_example_data
