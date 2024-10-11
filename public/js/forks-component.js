@@ -20,11 +20,54 @@ class ForkList extends HTMLElement {
     
 
     this.shadowRoot.appendChild(this.#template());
+    this.btn = this.shadowRoot.querySelector('.btn');
     this.#makeTest(this.repoScriptData, this.repoManifest)
     Prism.highlightElement(this.shadowRoot.querySelector("code"));
   }
 
   connectedCallback() {
+
+    this.btn.addEventListener('click', async (event) => {
+        event.preventDefault(); // Prevent the default form submission
+        
+        // Get the comment from the input field
+        const comment = this.btn.parentNode.querySelector('input[type="text"]').value;
+    
+        // Get the selected radio button
+        const selectedOption = this.btn.parentNode.querySelector('input[name="options"]:checked');
+
+
+        // Prepare the data to send
+        const data = {
+            full_name: this.full_name,
+            comment: comment,
+            option: selectedOption ? selectedOption.value : null // Handle case if no option is selected
+        };
+        console.log(data)
+    
+        try {
+        
+            // Make a PUT request to the backend
+            const response = await fetch(`/forks`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+        
+            if (response.ok) {
+                const result = await response.json();
+                console.log('Success:', result);
+            } else {
+                console.error('Error:', response.statusText);
+            }
+        } catch (error) {
+            console.error('Fetch error:', error);
+        }
+        
+    });
+    
     
   }
 
@@ -162,21 +205,21 @@ class ForkList extends HTMLElement {
             <input type="text" placeholder="Comment">
             <br/><br/>
             <label class="mdl-radio mdl-js-radio mdl-js-ripple-effect" for="radio-1">
-                <input type="radio" id="radio-1" class="mdl-radio__button" name="options" value="1">
+                <input type="radio" id="radio-1" class="mdl-radio__button" name="options" value="done">
                 <span class="mdl-radio__label" style="display: flex; align-items: center;">
                     <i class="material-icons">check</i> Klar
                 </span>
             </label>
             <br/><br/>
             <label class="mdl-radio mdl-js-radio mdl-js-ripple-effect" for="radio-2">
-                <input type="radio" id="radio-2" class="mdl-radio__button" name="options" value="2">
+                <input type="radio" id="radio-2" class="mdl-radio__button" name="options" value="not done">
                 <span class="mdl-radio__label" style="display: flex; align-items: center;">
                     <i class="material-icons">visibility_off</i> Återgärd Krävs
                 </span>
             </label>
             <br/><br/>
             <label class="mdl-radio mdl-js-radio mdl-js-ripple-effect" for="radio-3">
-                <input type="radio" id="radio-3" class="mdl-radio__button" name="options" value="3" checked>
+                <input type="radio" id="radio-3" class="mdl-radio__button" name="options" value="not reviewed" checked>
                 <span class="mdl-radio__label" style="display: flex; align-items: center;">
                     <i class="material-icons">refresh</i> Ej Bedömd
                 </span>

@@ -83,4 +83,37 @@ class Backend < Sinatra::Base
     db.execute('DELETE FROM cache WHERE id = ?', params[:id])
     { result: 'success', message: 'Cachepost raderad!' }.to_json
   end
+
+
+  put '/forks' do
+    content_type :json
+
+    # Parse the incoming JSON data
+    data = JSON.parse(request.body.read)
+
+    name = data['full_name']
+    cachecomment = data['comment']  # This should be a string
+    status = data['option']
+
+    p name
+    p cachecomment
+    p status
+
+    # Ensure cachecomment and status are present
+    if cachecomment.nil? || status.nil?
+        halt 400, { result: 'error', message: 'Comment and status must be provided.' }.to_json
+    end
+
+    # Update the data in the database
+    result = db.execute('UPDATE forks SET comment = ?, status = ? WHERE name = ?', [cachecomment, status, name])
+
+    # Check if the update was successful
+    if result.empty?
+        halt 404, { result: 'error', message: 'No record found to update.' }.to_json
+    else
+        { result: 'success', message: 'Data updated successfully!' }.to_json
+    end
+end
+
+
 end

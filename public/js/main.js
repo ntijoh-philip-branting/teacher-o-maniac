@@ -96,6 +96,8 @@ class MainComponent extends HTMLElement {
     const input_name = e.detail.search_name;
     const forks = await getForks(input_name, e.detail.repo_name);
 
+    
+
     for (const repo of forks) {
       let search_name = input_name;
       let repoName = repo.name;
