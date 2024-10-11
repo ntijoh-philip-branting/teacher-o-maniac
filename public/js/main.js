@@ -23,45 +23,81 @@ class MainComponent extends HTMLElement {
     this.divContent.innerHTML = "";
     this.divContent.style.gridTemplateColumns = 'repeat(3,1fr)';
 
-    const response = await fetch(`/cache/${e.detail.search}`);
-    
-    if (response.ok) {
-      const result = await response.json();
-      
-      if (result.result === 'success') {
-        const cacheData = result.data;
-        const repoName = cacheData.name;
-        const url = cacheData.cacheinfo; 
-        const forkCount = 0; // Replace with appropriate data if available
+    const input_name = e.detail.search;
+    let repos;
 
-        this.divContent.appendChild(
-          new RepoCard(repoName, url, e.detail.search, forkCount)
-        );
-      }
-    } else {
-      console.error('Cache entry not found or request failed.');
+    try {
+        const response = await fetch(`cache/${input_name}`);
+        if (response.ok) {
+            const data = await response.json(); // Parse the response
+            console.log('Cache data:', data); // Log the full cache data for debugging
+
+            // Ensure data is structured as expected
+            if (data.result === 'success' && data.data && data.data.cacheinfo) {
+                repos = data.data.cacheinfo; // Extract cacheinfo
+
+                // Check if repos is a string and needs parsing
+                if (typeof repos === 'string') {
+                    repos = JSON.parse(repos);
+                }
+
+                // Ensure repos is an array, even if it's just a single object
+                if (!Array.isArray(repos)) {
+                    repos = [repos]; // Wrap in array if it's not already an array
+                }
+            } else {
+                throw new Error('Invalid cache data structure');
+            }
+        } else {
+            throw new Error('Failed to fetch from cache');
+        }
+    } catch (error) {
+        console.log('Error fetching from cache:', error);
+
+        // Fetch from the GitHub API if cache is not available
+        repos = await getRepositories(input_name);
+
+        // Insert the fetched repositories into the database by POSTing them to `/cache`
+        await fetch('/cache', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                name: input_name,
+                cacheinfo: repos, // Send the entire array of repositories to cache
+            }),
+        });
     }
 
-    const repos = await getRepositories(e.detail.search);
-    repos.forEach((element) => {
-      let repoName = element.name;
-      let url = element.html_url;
-      let forkCount = element.forks;
+    // Check if repos is defined before trying to iterate
+    if (repos) {
+        // Iterate through the repositories and display them
+        repos.forEach((element) => {
+            let repoName = element.name;
+            let url = element.html_url;
+            let forkCount = element.forks;
 
-      this.divContent.appendChild(
-        new RepoCard(repoName, url, e.detail.search, forkCount)
-      );
-    });
-  }
+            // Add each repository to the content area
+            this.divContent.appendChild(
+                new RepoCard(repoName, url, input_name, forkCount)
+            );
+        });
+    } else {
+        console.error('No repositories found.');
+    }
+}
+
+
 
   async #show_repo(e) {
     this.divContent.innerHTML = "";
     this.divContent.style.gridTemplateColumns = 'repeat(2,1fr)';
-
-    const forks = await getForks(e.detail.search_name, e.detail.repo_name);
+    const input_name = e.detail.search_name;
+    const forks = await getForks(input_name, e.detail.repo_name);
 
     for (const repo of forks) {
-      let search_name = e.detail.search_name;
+      let search_name = input_name;
       let repoName = repo.name;
       let url = repo.html_url;
       let full_name = repo.full_name;
