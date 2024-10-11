@@ -27,7 +27,7 @@ db.execute('CREATE TABLE forks
                (id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name VARCHAR(255) NOT NULL,
                 comment TEXT,
-                status VARCHAR(50) CHECK(status IN ('done', 'not done', 'not reviewed')) NOT NULL DEFAULT 'not reviewed'
+                status VARCHAR(50) CHECK(status IN ("done", "not done", "not reviewed")) NOT NULL DEFAULT "not reviewed"
                )')
 
 puts 'Tables have been created successfully!'
