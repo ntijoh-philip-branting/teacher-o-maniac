@@ -1,10 +1,4 @@
-
-
-
 database.db
-
-app.rb
 public/js/private.js
 views/apiTestcases.erb
-
 .env
