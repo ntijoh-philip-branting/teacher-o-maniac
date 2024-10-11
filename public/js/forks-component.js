@@ -1,16 +1,93 @@
 class ForkList extends HTMLElement {
-  constructor(name, url, content) {
+  constructor(full_name, repo_name, manData, url) {
     super();
     this.attachShadow({ mode: "open" });
-    this.name = name;
+    this.full_name = full_name;
+    this.repo_name = repo_name;
     this.url = url;
-    this.content = content;
+
+
+    if (manData) {
+        this.repoScriptData = manData.scriptData || "scriptData not available";
+        this.repoManifest = manData.manifest || "manifest not available";
+
+        
+      } else {
+        this.repoScriptData = "scriptdata not found";
+        this.repoManifest = "manifestdata not found";
+      }
+
+    
+
     this.shadowRoot.appendChild(this.#template());
+    this.#makeTest(this.repoScriptData, this.repoManifest)
+    Prism.highlightElement(this.shadowRoot.querySelector("code"));
   }
 
   connectedCallback() {
-    Prism.highlightAll();
+    
   }
+
+
+
+
+  #escapeHTML(str) {
+    return str.replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#39;');
+}
+
+#makeTest(code, manifest) {
+    const container = this.shadowRoot.querySelector("#test");
+    container.innerHTML = ''; // Clear previous results
+
+    // Check if the language is supported
+    if (manifest.language !== "javascript") {
+        container.innerHTML = '<p>Language is not supported</p>';
+        return;
+    }
+    if (code && manifest) {
+        const functionName = manifest.functionName;  // Ensure to use `this.manifest`
+        try {
+            const smallestOfTwo = new Function(code + `; return ${functionName};`)(); // Correct function creation
+
+            const tests = manifest.tests;  // Access tests from the manifest
+            let results = '';
+
+            // Run each test
+            tests.forEach(test => {
+                const { description, arguments: args, expected } = test;
+                try {
+                    console.log(`Executing test: "${description}" with args:`, args);
+                    const result = smallestOfTwo(...args); // Call the function directly
+                    if (result === expected) {
+                        results += `<p style='color:green;'>Test "${description}"- Passed</p>`;
+
+                    } else {
+                        results += `<p style='color:red;'>Test "${description}"- Failed (Expected ${expected}, got ${result})</p>`;
+                    }
+                } catch (error) {
+                    console.error(`Error executing test "${description}":`, error);
+                    results += `<p>Test "${description}": Error (${error.message})</p>`;
+                }
+            });
+
+            // Display results
+            container.innerHTML = results;
+
+        } catch (error) {
+            console.error(`Failed to create function: ${error.message}`);
+            container.innerHTML = `<p>Error creating function: ${error.message}</p>`;
+        }
+    } else {
+        console.error("Code or manifest is missing.");
+        container.innerHTML = '<p>Code or manifest is missing.</p>';
+    }
+}
+
+
 
   #template() {
     const template = document.createElement("template");
@@ -23,7 +100,8 @@ class ForkList extends HTMLElement {
 
 
                  .repo-card {
-        width: 40vw;
+                 box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.2);
+        width: 500px;
         padding: 16px;
         border: 1px solid #e0e0e0; /* Main border for the repo card */
         border-radius: 4px;
@@ -46,6 +124,19 @@ class ForkList extends HTMLElement {
         margin-top: 16px;
     }
 
+    pre {
+    background-color: black:
+                    padding: 16px;
+                    border-radius: 4px;
+                    overflow: auto;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                }
+                code {
+                    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+                    font-size: 14px;
+                }
+
                 
             </style>
 
@@ -56,9 +147,14 @@ class ForkList extends HTMLElement {
 
             <div class="repo-card">
     <div class="mdl-card__actions mdl-card--border">
-        <p class="repo-title">${this.name}</p>
-        <pre><code class="language-javascript">${this.content}</code></pre>
+        <p class="repo-title">${this.full_name}</p>
+        <pre><code class="language-javascript">${this.#escapeHTML(this.repoScriptData)}</code></pre>
         <p><a href="${this.url}" target="_blank" style="color: blue;">Show on GitHub</a></p>
+        
+    </div>
+
+    <div id="test" class="mdl-card__actions mdl-card--border" style="color: black;">
+    
     </div>
 
     <div class="mdl-card__actions mdl-card--border">
@@ -100,3 +196,5 @@ class ForkList extends HTMLElement {
 }
 
 window.customElements.define("fork-list", ForkList);
+
+

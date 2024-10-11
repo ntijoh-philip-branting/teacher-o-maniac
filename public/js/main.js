@@ -1,6 +1,13 @@
+import {
+  getRepositories,
+  getForks,
+  getRepositoryInfo,
+  getRepositoryManifest,
+} from "./api.js";
+
 class MainComponent extends HTMLElement {
   static get observedAttributes() {
-    return ["search", "name", "repo_url"];
+    return ["search", "repo_name", "repo_url", "search_name"];
   }
 
   constructor() {
@@ -13,39 +20,51 @@ class MainComponent extends HTMLElement {
   }
 
   async #search_item(e) {
-    console.log(e.detail.search);
-    const repos = [
-      {
-        name: "Hello-World",
-        html_url: "https://github.com/octocat/Hello-World",
-      },
-      { name: "Bye-Bitch", html_url: "https://github.com/octocat" },
-    ]; // const repos = await getRepositories(e.detail.search)
-    console.log(repos);
+    this.divContent.innerHTML = "";
+    this.divContent.style.gridTemplateColumns = 'repeat(3,1fr)';
+
+    const repos = await getRepositories(e.detail.search);
     repos.forEach((element) => {
       let repoName = element.name;
       let url = element.html_url;
-      console.log(repoName);
-      this.divContent.appendChild(new RepoCard(repoName, url));
+      let forkCount = element.forks;
+
+      this.divContent.appendChild(
+        new RepoCard(repoName, url, e.detail.search, forkCount)
+      );
     });
   }
 
   async #show_repo(e) {
     this.divContent.innerHTML = "";
+    this.divContent.style.gridTemplateColumns = 'repeat(2,1fr)';
+
+    const forks = await getForks(e.detail.search_name, e.detail.repo_name);
+
+    for (const repo of forks) {
+      let search_name = e.detail.search_name;
+      let repoName = repo.name;
+      let url = repo.html_url;
+      let full_name = repo.full_name;
+      let owner = repo.owner.login
+
+  
+      // Declare manData here, to avoid scoping issues
+      let manData = null;
+      try {
+        manData = await getRepositoryManifest(owner, e.detail.repo_name);
+
+    } catch (error) {
+        console.error(error);
+        manData = null; // Set to null on failure
+      }
 
 
-    // Here should the function to get code example be
-    const content = `function plus(){
-    return 1+1;
+      // Use manData, whether fetched successfully or set to 404
+      this.divContent.appendChild(new ForkList(full_name, repoName, manData, url));
+    }
   }
-    
-`
-
-
-    this.divContent.appendChild(new ForkList(e.detail.name, e.detail.repo_url, content))
-    console.log(e.detail.name);
-    console.log(e.detail.repo_url);
-  }
+  
 
   #template() {
     const template = document.createElement("template");
@@ -57,7 +76,7 @@ class MainComponent extends HTMLElement {
                 display:grid;
                 grid-template-columns: repeat(3,1fr);
                 justify-items: center;
-                align-items: cetner;
+                row-gap: 20px;
                 
                 }
             </style>
