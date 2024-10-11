@@ -2,7 +2,7 @@ require 'bundler'
 
 Bundler.require
 
-require_relative 'backend'
+require_relative 'app'
 
-run Backend
+run App
 

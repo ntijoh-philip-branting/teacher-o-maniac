@@ -1,9 +1,8 @@
 class ForkList extends HTMLElement {
-  constructor(full_name, repo_name, manData, url) {
+  constructor(full_name, manData, url) {
     super();
     this.attachShadow({ mode: "open" });
     this.full_name = full_name;
-    this.repo_name = repo_name;
     this.url = url;
 
 
