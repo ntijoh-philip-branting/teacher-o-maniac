@@ -23,6 +23,25 @@ class MainComponent extends HTMLElement {
     this.divContent.innerHTML = "";
     this.divContent.style.gridTemplateColumns = 'repeat(3,1fr)';
 
+    const response = await fetch(`/cache/${e.detail.search}`);
+    
+    if (response.ok) {
+      const result = await response.json();
+      
+      if (result.result === 'success') {
+        const cacheData = result.data;
+        const repoName = cacheData.name;
+        const url = cacheData.cacheinfo; 
+        const forkCount = 0; // Replace with appropriate data if available
+
+        this.divContent.appendChild(
+          new RepoCard(repoName, url, e.detail.search, forkCount)
+        );
+      }
+    } else {
+      console.error('Cache entry not found or request failed.');
+    }
+
     const repos = await getRepositories(e.detail.search);
     repos.forEach((element) => {
       let repoName = element.name;
