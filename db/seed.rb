@@ -17,8 +17,8 @@ db.execute('CREATE TABLE users
 db.execute('DROP TABLE IF EXISTS cache')
 db.execute('CREATE TABLE cache
                (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name VARCHAR(255) NOT NULL UNIQUE,
-                cacheinfo VARCHAR(255) NOT NULL
+                name TEXT NOT NULL,
+                cacheinfo TEXT NOT NULL
                )')
 
 # Drop and recreate the 'forks' table

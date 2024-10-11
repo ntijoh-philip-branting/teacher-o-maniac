@@ -1,6 +1,7 @@
 require 'sinatra'
 require 'sqlite3'
 require 'bcrypt'
+require 'json'
 require_relative 'db/seed'
 
 class Backend < Sinatra::Base
@@ -13,7 +14,7 @@ class Backend < Sinatra::Base
   end
 
   get '/' do
-    erb :index
+    erb :layout
   end
 
   # Login
@@ -36,23 +37,38 @@ class Backend < Sinatra::Base
   end
 
   # Search for cache
-  get '/cache/:id' do
+  get '/cache/:input_name' do
     content_type :json
-    cache_entry = db.execute('SELECT * FROM cache WHERE id = ?', params[:id]).first
-
+    cache_entry = db.execute('SELECT * FROM cache WHERE name = ?', params[:input_name]).first
+  
     if cache_entry
-      { result: 'success', data: cache_entry }.to_json
+      # Parse the JSON stored in the cacheinfo field and return it
+      cacheinfo = JSON.parse(cache_entry['cacheinfo'])
+  
+      { result: 'success', data: { id: cache_entry['id'], name: cache_entry['name'], cacheinfo: cacheinfo } }.to_json
     else
       halt 404, { result: 'error', message: 'Cache entry not found.' }.to_json
     end
   end
+  
 
   # Add cache
   post '/cache' do
     content_type :json
-    db.execute('INSERT INTO cache (name, cacheinfo) VALUES (?, ?)', [params[:name], params[:cacheinfo]])
-    { result: 'success', message: 'Cachepost skapad!' }.to_json
+  
+    # Parse the incoming JSON data
+    data = JSON.parse(request.body.read)
+    
+    name = data['name']
+    cacheinfo = data['cacheinfo']  # This should be an array of repos
+  
+    # Store the entire array of repositories as a JSON string
+    db.execute('INSERT INTO cache (name, cacheinfo) VALUES (?, ?)', [name, cacheinfo.to_json])
+  
+    { result: 'success', message: 'Cache data stored successfully!' }.to_json
   end
+  
+  
 
   # Update cache
   put '/cache/:id' do
