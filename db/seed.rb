@@ -2,68 +2,107 @@ require 'sqlite3'
 require 'pp'
 require 'bcrypt'
 
-# Connect to the SQLite database
-db = SQLite3::Database.new 'db/database.db'
+'''
+This is how you use the smack:
 
-# Drop and recreate the 'users' table with GitHub data fields
-db.execute('DROP TABLE IF EXISTS users')
-db.execute('CREATE TABLE users
-               (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                github_id INTEGER UNIQUE, 
-                username TEXT,
-                name TEXT NOT NULL,
-                password TEXT,
-                avatar_url TEXT,
-                html_url TEXT,
-                public_repos INTEGER
-               )')
+seeder = DatabaseSeeder.new
+seeder.create_tables
+seeder.seed_example_data
 
-# Drop and recreate the 'cache' table
-db.execute('DROP TABLE IF EXISTS cache')
-db.execute('CREATE TABLE cache
-               (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL UNIQUE,
-                cacheinfo TEXT NOT NULL
-               )')
+'''
 
-# Drop and recreate the 'forks' table
-db.execute('DROP TABLE IF EXISTS forks')
-db.execute('CREATE TABLE forks
-               (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                comment TEXT,
-                status TEXT CHECK(status IN ("done", "not done", "not reviewed")) NOT NULL DEFAULT "not reviewed"
-               )')
+class DatabaseSeeder
+  def initialize
+    @db = SQLite3::Database.new 'db/database.db'
+    @db.results_as_hash = true
+  end
 
-puts 'Tables have been created successfully!'
+  # Create tables
+  def create_tables
+    create_users_table
+    create_cache_table
+    create_forks_table
+    puts 'Tables have been created successfully!'
+  end
 
-# Example data for a local user (non-GitHub)
-local_user_name = 'JohnDoe'
-local_user_password = BCrypt::Password.create('123456')  # Hash the password using BCrypt
+  # Insert example data into tables
+  def seed_example_data
+    seed_local_user
+    seed_github_user
+    seed_cache_data
+    verify_data_insertion
+  end
 
-# Example data for a GitHub user
-github_user_id = 123456
-github_username = 'githubUser123'
-github_name = 'JaneDoe'
-github_avatar_url = 'https://github.com/images/avatar.jpg'
-github_html_url = 'https://github.com/githubUser123'
-github_public_repos = 42
+  private
 
-# Insert local user data into the 'users' table
-db.execute('INSERT INTO users (name, password) VALUES (?, ?)', [local_user_name, local_user_password])
+  # Drop and recreate the 'users' table with GitHub data fields
+  def create_users_table
+    @db.execute('DROP TABLE IF EXISTS users')
+    @db.execute(<<-SQL
+      CREATE TABLE users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        github_id INTEGER UNIQUE,
+        username TEXT,
+        name TEXT NOT NULL,
+        password TEXT,
+        avatar_url TEXT,
+        html_url TEXT,
+        public_repos INTEGER
+      )
+    SQL
+    )
+  end
 
-# Insert GitHub user data into the 'users' table
-db.execute('INSERT INTO users (github_id, username, name, avatar_url, html_url, public_repos) VALUES (?, ?, ?, ?, ?, ?)', 
-           [github_user_id, github_username, github_name, github_avatar_url, github_html_url, github_public_repos])
+  # Drop and recreate the 'cache' table
+  def create_cache_table
+    @db.execute('DROP TABLE IF EXISTS cache')
+    @db.execute(<<-SQL
+      CREATE TABLE cache (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        cacheinfo TEXT NOT NULL
+      )
+    SQL
+    )
+  end
 
-# Example data for the cache table
-cache_name = 'example_cache_entry'
-cache_info = 'example_cache_info'
+  # Drop and recreate the 'forks' table
+  def create_forks_table
+    @db.execute('DROP TABLE IF EXISTS forks')
+    @db.execute(<<-SQL
+      CREATE TABLE forks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        comment TEXT,
+        status TEXT CHECK(status IN ("done", "not done", "not reviewed")) NOT NULL DEFAULT "not reviewed"
+      )
+    SQL
+    )
+  end
 
-# Insert data into the 'cache' table
-db.execute('INSERT INTO cache (name, cacheinfo) VALUES (?, ?)', [cache_name, cache_info])
+  # Seed example data for a local user (non-GitHub)
+  def seed_local_user
+    local_user_name = 'JohnDoe'
+    local_user_password = BCrypt::Password.create('123456')
+    @db.execute('INSERT INTO users (name, password) VALUES (?, ?)', [local_user_name, local_user_password])
+  end
 
-# Verify the data insertion by printing the 'users' and 'cache' tables
-db.results_as_hash = true
-pp user_result = db.execute('SELECT * FROM users')
-pp cache_result = db.execute('SELECT * FROM cache')
+
+  # Seed example data for the cache table
+  def seed_cache_data
+    cache_name = 'example_cache_entry'
+    cache_info = 'example_cache_info'
+    @db.execute('INSERT INTO cache (name, cacheinfo) VALUES (?, ?)', [cache_name, cache_info])
+  end
+
+  # Verify the data insertion by printing the 'users' and 'cache' tables
+  def verify_data_insertion
+    pp user_result = @db.execute('SELECT * FROM users')
+    pp cache_result = @db.execute('SELECT * FROM cache')
+  end
+end
+
+# Usage example:
+seeder = DatabaseSeeder.new
+seeder.create_tables
+seeder.seed_example_data
