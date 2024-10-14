@@ -37,88 +37,165 @@ class Profile extends HTMLElement {
   #template() {
     const template = document.createElement("template");
 
-    // CSS styles
-    const styles = `
-      <style>
-        :host {
-          display: block;
-          font-family: 'Arial', sans-serif;
-          color: #fff;
-          background: linear-gradient(135deg, #ff6b81, #8e44ad); /* Pink to Purple gradient */
-          border-radius: 8px;
-          padding: 20px;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-          text-align: center;
-          max-width: 400px;
-          margin: 20px auto;
-        }
-        img {
-          border-radius: 50%;
-          width: 100px;
-          height: 100px;
-          margin-bottom: 15px;
-        }
-        h1 {
-          color: #f9c74f; /* Soft yellow color */
-          font-size: 24px;
-          margin: 10px 0;
-        }
-        pre {
-          background-color: rgba(255, 255, 255, 0.1);
-          padding: 10px;
-          border-radius: 5px;
-        }
-        button {
-          background-color: #f9c74f; /* Soft yellow button */
-          color: #8e44ad; /* Purple text */
-          border: none;
-          border-radius: 5px;
-          padding: 10px 20px;
-          font-size: 16px;
-          cursor: pointer;
-          transition: background-color 0.3s ease;
-          margin-top: 20px;
-        }
-        button:hover {
-          background-color: #f8c45d; /* Slightly darker yellow */
-        }
-        button:focus {
-          outline: none;
-          box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
-        }
-      </style>
-    `;
-
     if (this.user) {
       template.innerHTML = `
-        ${styles}
+        <style>
+          /* Add your CSS styles here */
+
+          :host {
+            display: block;
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+            background: linear-gradient(135deg, #ff6b81, #8e44ad); /* Pink to Purple gradient */
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            margin: 20px auto;
+          }
+          img {
+            border-radius: 50%;
+            width: 100px;
+            height: 100px;
+            margin-bottom: 15px;
+          }
+          h1 {
+            color: #f9c74f; /* Soft yellow color */
+            font-size: 24px;
+            margin: 10px 0;
+          }
+          pre {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+          }
+          button {
+            background-color: #f9c74f; /* Soft yellow button */
+            color: #8e44ad; /* Purple text */
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+          }
+          button:hover {
+            background-color: #f8c45d; /* Slightly darker yellow */
+          }
+          button:focus {
+            outline: none;
+            box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+          }
+
+          img {
+            border-radius: 50%;
+            width: 100px;
+            height: 100px;
+          }
+          h1 {
+            color: #8e44ad; /* Purple */
+          }
+          pre {
+            background-color: #f9c74f; /* Soft yellow */
+            padding: 10px;
+            border-radius: 5px;
+          }
+          a {
+            display: inline-block; /* Make it behave like a button */
+            background-color: #f9c74f; /* Soft yellow */
+            color: #8e44ad; /* Purple text */
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            text-decoration: none; /* Remove underline */
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+          }
+          a:hover {
+            background-color: #f8c45d; /* Slightly darker yellow */
+          }
+        </style>
         <img src="${this.user.avatar_url}" alt="Image not found">
         <h1>Välkommen ${this.user.username}</h1>
         <pre>Repos: ${this.user.public_repos}</pre>
-        <button id="return-home">Return to Home</button>
+        <a id="return-home" href="/">Return to Home</a>
       `;
     } else {
       template.innerHTML = `
-        ${styles}
+        <style>
+        :host {
+            display: block;
+            font-family: 'Arial', sans-serif;
+            color: #fff;
+            background: linear-gradient(135deg, #ff6b81, #8e44ad); /* Pink to Purple gradient */
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 400px;
+            margin: 20px auto;
+          }
+          img {
+            border-radius: 50%;
+            width: 100px;
+            height: 100px;
+            margin-bottom: 15px;
+          }
+          h1 {
+            color: #f9c74f; /* Soft yellow color */
+            font-size: 24px;
+            margin: 10px 0;
+          }
+          pre {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+          }
+          button {
+            background-color: #f9c74f; /* Soft yellow button */
+            color: #8e44ad; /* Purple text */
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+          }
+          button:hover {
+            background-color: #f8c45d; /* Slightly darker yellow */
+          }
+          button:focus {
+            outline: none;
+            box-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+          }
+
+          a {
+            display: inline-block; /* Make it behave like a button */
+            background-color: #f9c74f; /* Soft yellow */
+            color: #8e44ad; /* Purple text */
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            font-size: 16px;
+            text-decoration: none; /* Remove underline */
+            transition: background-color 0.3s ease;
+            margin-top: 20px;
+          }
+          a:hover {
+            background-color: #f8c45d; /* Slightly darker yellow */
+          }
+
+        </style>
         <p>User Data is not available</p>
-        <button id="return-home">Return to Home</button>
+        <a id="return-home" href="/">Return to Home</a>
       `;
     }
 
-    // Attach button event listener
-    this.#addEventListeners(template);
-
     return template.content.cloneNode(true);
-  }
-
-  #addEventListeners(template) {
-    const returnHomeButton = template.content.querySelector('#return-home');
-    returnHomeButton.addEventListener('click', () => {
-      // Implement your return to home functionality here
-      console.log('Returning to Home');
-      // For example, redirect to the home page
-      window.location.href = '/'; // Adjust as necessary
-    });
   }
 }
 
