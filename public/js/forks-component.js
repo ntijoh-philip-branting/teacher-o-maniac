@@ -1,135 +1,203 @@
-class ForkList extends HTMLElement {
-  constructor(full_name, manData, url) {
+class Comment extends HTMLElement {
+  constructor(comment, status) {
     super();
     this.attachShadow({ mode: "open" });
-    this.full_name = full_name;
+    this.comment = comment;
+    this.status = status;
+    this.shadowRoot.appendChild(this.#template());
+    this.forked = this.shadowRoot.querySelector("#fork");
+  }
+
+  #template() {
+    const template = document.createElement("template");
+    template.innerHTML = `
+          <style>
+  
+              @import url('https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css');
+              @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
+  
+                              .repo-card {
+                              box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.2);
+                      padding: 16px;
+                      border: 1px solid #e0e0e0;
+                      border-radius: 4px;
+                      margin-bottom: 16px;
+                      background-color: #ffffff;
+                  }
+                  .repo-title {
+                      font-weight: bold;
+                      font-size: 18px;
+                  }
+  
+                  
+              </style>
+              <div class="repo-card" style="width:300px;">
+                  <p class="repo-title">${this.comment}</p>
+                <label class="mdl-radio mdl-js-radio mdl-js-ripple-effect" for="radio-3">
+                    <input type="radio" id="radio-3" class="mdl-radio__button" name="options" value="not reviewed" checked>
+                    <span class="mdl-radio__label" style="display: flex; align-items: center;">
+                        <!-- <i class="material-icons">refresh</i>  --> ${this.status}
+                    </span>
+                </label>
+              </div>
+  
+  
+        `;
+    return template.content.cloneNode(true);
+  }
+}
+
+class ForkList extends HTMLElement {
+  constructor(path_name, manData, url) {
+    super();
+    this.attachShadow({ mode: "open" });
+    this.path_name = path_name;
     this.url = url;
 
-
     if (manData) {
-        this.repoScriptData = manData.scriptData || "scriptData not available";
-        this.repoManifest = manData.manifest || "manifest not available";
-
-        
-      } else {
-        this.repoScriptData = "scriptdata not found";
-        this.repoManifest = "manifestdata not found";
-      }
-
-    
+      this.repoScriptData = manData.scriptData || "scriptData not available";
+      this.repoManifest = manData.manifest || "manifest not available";
+    } else {
+      this.repoScriptData = "scriptdata not found";
+      this.repoManifest = "manifestdata not found";
+    }
 
     this.shadowRoot.appendChild(this.#template());
-    this.btn = this.shadowRoot.querySelector('.btn');
-    this.#makeTest(this.repoScriptData, this.repoManifest)
+    this.btn = this.shadowRoot.querySelector(".btn");
+    this.#makeTest(this.repoScriptData, this.repoManifest);
     Prism.highlightElement(this.shadowRoot.querySelector("code"));
   }
 
-  connectedCallback() {
+  async connectedCallback() {
+    this.btn.addEventListener("click", async (event) => {
+      event.preventDefault(); // Prevent the default form submission
 
-    this.btn.addEventListener('click', async (event) => {
-        event.preventDefault(); // Prevent the default form submission
-        
-        // Get the comment from the input field
-        const comment = this.btn.parentNode.querySelector('input[type="text"]').value;
-    
-        // Get the selected radio button
-        const selectedOption = this.btn.parentNode.querySelector('input[name="options"]:checked');
+      // Get the comment from the input field
+      const comment =
+        this.btn.parentNode.querySelector('input[type="text"]').value;
 
+      // Get the selected radio button
+      const selectedOption = this.btn.parentNode.querySelector(
+        'input[name="options"]:checked'
+      );
 
-        // Prepare the data to send
-        const data = {
-            full_name: this.full_name,
-            comment: comment,
-            status: selectedOption ? selectedOption.value : null // Handle case if no option is selected
-        };
-        console.log(data)
-    
-        try {
-        
-            // Make a PUT request to the backend
-            const response = await fetch(`/forks`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            });
-        
-            if (response.ok) {
-                const result = await response.json();
-                console.log('Success:', result);
-            } else {
-                console.error('Error:', response.statusText);
-            }
-        } catch (error) {
-            console.error('Fetch error:', error);
+      const status = selectedOption ? selectedOption.value : null;
+
+      // Prepare the data to send
+
+      const formData = new FormData();
+      formData.append("path_name", this.path_name);
+      formData.append("comment", comment);
+      formData.append("status", status);
+
+      console.log(formData);
+
+      try {
+        // Make a PUT request to the backend
+        const response = await fetch(`/comments`, {
+          method: "POST",
+          body: formData
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log("Success:", result);
+        } else {
+          console.error("Error:", response.statusText);
         }
-        
+      } catch (error) {
+        console.error("Fetch error:", error);
+      }
+
+      this.comments = await this.#getComments();
+      if (this.comments.length > 0) {
+        this.addComments();
+      }
     });
-    
-    
   }
 
+  async #getComments() {
+    try {
+      const response = await fetch(`/comments/${this.path_name}`, {
+        method: "GET",
+      });
+      if (response.ok) {
+        return await response.json();
+      } else {
+        console.error("Error fetching comments:", response.statusText);
+        return [];
+      }
+    } catch (error) {
+      console.log(`Caught issue: ${error}`);
+      return [];
+    }
+  }
 
+  addComments() {
+    this.comments.forEach((element) => {
+      let comment = element.comment;
+      let status = element.status;
 
+      this.divContent.appendChild(new RepoCard(comment, status));
+    });
+  }
 
   #escapeHTML(str) {
-    return str.replace(/&/g, '&amp;')
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;')
-              .replace(/"/g, '&quot;')
-              .replace(/'/g, '&#39;');
-}
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
 
-#makeTest(code, manifest) {
+  #makeTest(code, manifest) {
     const container = this.shadowRoot.querySelector("#test");
-    container.innerHTML = ''; // Clear previous results
+    container.innerHTML = ""; // Clear previous results
 
     // Check if the language is supported
     if (manifest.language !== "javascript") {
-        container.innerHTML = '<p>Language is not supported</p>';
-        return;
+      container.innerHTML = "<p>Language is not supported</p>";
+      return;
     }
     if (code && manifest) {
-        const functionName = manifest.functionName;  // Ensure to use `this.manifest`
-        try {
-            const smallestOfTwo = new Function(code + `; return ${functionName};`)(); // Correct function creation
+      const functionName = manifest.functionName; // Ensure to use `this.manifest`
+      try {
+        const smallestOfTwo = new Function(
+          code + `; return ${functionName};`
+        )(); // Correct function creation
 
-            const tests = manifest.tests;  // Access tests from the manifest
-            let results = '';
+        const tests = manifest.tests; // Access tests from the manifest
+        let results = "";
 
-            // Run each test
-            tests.forEach(test => {
-                const { description, arguments: args, expected } = test;
-                try {
-                    console.log(`Executing test: "${description}" with args:`, args);
-                    const result = smallestOfTwo(...args); // Call the function directly
-                    if (result === expected) {
-                        results += `<p style='color:green;'>Test "${description}"- Passed</p>`;
+        // Run each test
+        tests.forEach((test) => {
+          const { description, arguments: args, expected } = test;
+          try {
+            console.log(`Executing test: "${description}" with args:`, args);
+            const result = smallestOfTwo(...args); // Call the function directly
+            if (result === expected) {
+              results += `<p style='color:green;'>Test "${description}"- Passed</p>`;
+            } else {
+              results += `<p style='color:red;'>Test "${description}"- Failed (Expected ${expected}, got ${result})</p>`;
+            }
+          } catch (error) {
+            console.error(`Error executing test "${description}":`, error);
+            results += `<p>Test "${description}": Error (${error.message})</p>`;
+          }
+        });
 
-                    } else {
-                        results += `<p style='color:red;'>Test "${description}"- Failed (Expected ${expected}, got ${result})</p>`;
-                    }
-                } catch (error) {
-                    console.error(`Error executing test "${description}":`, error);
-                    results += `<p>Test "${description}": Error (${error.message})</p>`;
-                }
-            });
-
-            // Display results
-            container.innerHTML = results;
-
-        } catch (error) {
-            console.error(`Failed to create function: ${error.message}`);
-            container.innerHTML = `<p>Error creating function: ${error.message}</p>`;
-        }
+        // Display results
+        container.innerHTML = results;
+      } catch (error) {
+        console.error(`Failed to create function: ${error.message}`);
+        container.innerHTML = `<p>Error creating function: ${error.message}</p>`;
+      }
     } else {
-        console.error("Code or manifest is missing.");
-        container.innerHTML = '<p>Code or manifest is missing.</p>';
+      console.error("Code or manifest is missing.");
+      container.innerHTML = "<p>Code or manifest is missing.</p>";
     }
-}
-
-
+  }
 
   #template() {
     const template = document.createElement("template");
@@ -167,7 +235,7 @@ class ForkList extends HTMLElement {
     }
 
     pre {
-    background-color: black:
+    background-color: black;
                     padding: 16px;
                     border-radius: 4px;
                     overflow: auto;
@@ -189,9 +257,13 @@ class ForkList extends HTMLElement {
 
             <div class="repo-card">
     <div class="mdl-card__actions mdl-card--border">
-        <p class="repo-title">${this.full_name}</p>
-        <pre><code class="language-javascript">${this.#escapeHTML(this.repoScriptData)}</code></pre>
-        <p><a href="${this.url}" target="_blank" style="color: blue;">Show on GitHub</a></p>
+        <p class="repo-title">${this.path_name}</p>
+        <pre><code class="language-javascript">${this.#escapeHTML(
+          this.repoScriptData
+        )}</code></pre>
+        <p><a href="${
+          this.url
+        }" target="_blank" style="color: blue;">Show on GitHub</a></p>
         
     </div>
 
@@ -229,6 +301,10 @@ class ForkList extends HTMLElement {
             </button>
         </form>
     </div>
+
+    <div>
+
+    </div>
 </div>
 
 
@@ -238,5 +314,3 @@ class ForkList extends HTMLElement {
 }
 
 window.customElements.define("fork-list", ForkList);
-
-

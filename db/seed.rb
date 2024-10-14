@@ -21,7 +21,7 @@ class DatabaseSeeder
   def create_tables
     create_users_table
     create_cache_table
-    create_forks_table
+    create_comments_table
     puts 'Tables have been created successfully!'
   end
 
@@ -58,17 +58,18 @@ class DatabaseSeeder
     )
   end
 
-  # Drop and recreate the 'forks' table
-  def create_forks_table
-    @db.execute('DROP TABLE IF EXISTS forks')
+  # Drop and recreate the 'comments' table
+  def create_comments_table
+    @db.execute('DROP TABLE IF EXISTS comments')
     @db.execute(<<-SQL
-      CREATE TABLE forks (
+      CREATE TABLE comments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
+        path_name TEXT NOT NULL,
         comment TEXT,
         status TEXT CHECK(status IN ("done", "not done", "not reviewed")) NOT NULL DEFAULT "not reviewed"
       )
     SQL
     )
   end
+  
 end

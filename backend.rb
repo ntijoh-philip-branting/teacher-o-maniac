@@ -39,12 +39,6 @@ class Backend < Sinatra::Base
     erb :apiTestcases, locals: { logged_in: logged_in}
   end
 
-  get '/api/login-status' do
-    @logger.info("GET /api/login-status called")
-    content_type :json
-    { logged_in: !!session[:github_user_id], user: session[:github_user_id] }.to_json
-  end
-
   get '/callback' do
     @logger.info("GET /callback called with params: #{params.inspect}")
     code = params[:code]
@@ -106,6 +100,14 @@ class Backend < Sinatra::Base
     @logger.info("User info stored for github_id: #{user_data['id']}")
   end
 
+
+
+  get '/api/login-status' do
+    @logger.info("GET /api/login-status called")
+    content_type :json
+    { logged_in: !!session[:github_user_id], user: session[:github_user_id] }.to_json
+  end
+
   get '/api/user' do
     @logger.info("GET /api/user called")
     @logger.info("Session data: #{session.inspect}")
@@ -164,18 +166,7 @@ class Backend < Sinatra::Base
     { result: 'success', message: 'Logout successful!' }.to_json
   end
 
-  get '/cache/:id' do
-    @logger.info("GET /cache/#{params[:id]} called")
-    content_type :json
-    cache_entry = db.execute('SELECT * FROM cache WHERE id = ?', params[:id]).first
 
-    if cache_entry
-      { result: 'success', data: cache_entry }.to_json
-    else
-      @logger.warn("Cache entry not found for id: #{params[:id]}")
-      halt 404, { result: 'error', message: 'Cache entry not found.' }.to_json
-    end
-  end
 
   post '/cache' do
     @logger.info("POST /cache called with params: #{params.inspect}")
@@ -190,6 +181,19 @@ class Backend < Sinatra::Base
     db.execute('INSERT INTO cache (name, cacheinfo) VALUES (?, ?)', [params[:name], params[:cacheinfo]])
     @logger.info("Cache entry created for name: #{params[:name]}")
     { result: 'success', message: 'Cache entry created!' }.to_json
+  end
+
+  get '/cache/:id' do
+    @logger.info("GET /cache/#{params[:id]} called")
+    content_type :json
+    cache_entry = db.execute('SELECT * FROM cache WHERE id = ?', params[:id]).first
+
+    if cache_entry
+      { result: 'success', data: cache_entry }.to_json
+    else
+      @logger.info("Cache entry not found for id: #{params[:id]}")
+      { result: 'error', message: 'Cache entry not found.' }.to_json
+    end
   end
 
   put '/cache/:id' do
@@ -213,5 +217,32 @@ class Backend < Sinatra::Base
     db.execute('DELETE FROM cache WHERE id = ?', params[:id])
     @logger.info("Cache entry deleted for id: #{params[:id]}")
     { result: 'success', message: 'Cache entry deleted!' }.to_json
+  end
+
+
+
+  post '/comments' do
+    @logger.info("PUT /comments called with params: #{params.inspect}")
+    content_type :json
+
+    unless params[:path_name] && params[:comment] && params[:status]
+      @logger.error("Missing comment parameters.")
+      halt 400, { error: 'Missing path_name, comment, or status.' }.to_json
+    end
+
+    db.execute("INSERT INTO comments (path_name, comment, status) VALUES (?,?,?)", [params[:path_name], params[:comment], params[:status]])
+    @logger.info("Successfully stored comment at #{params[:path_name]}")
+    { result: 'success', message: 'Comment Inserted'}.to_json
+  end
+
+  get '/comments/:path_name' do
+    @logger.info("GET comments at #{path_name} Called ")
+    comments = db.execute("SELECT * FROM comments WHERE path_name = ?", path_name)
+    if comments
+      { result: 'success', comments: comments }.to_json
+    else
+      @logger.info("No comments found for path: #{path_name}")
+      { result: 'error', message: 'No comments for path_name' }.to_json
+    end
   end
 end
