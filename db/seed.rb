@@ -23,15 +23,18 @@ db.execute('CREATE TABLE cache
 
 # Drop and recreate the 'forks' table
 db.execute('DROP TABLE IF EXISTS forks')
-db.execute('CREATE TABLE forks
+db.execute("CREATE TABLE forks
                (id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name VARCHAR(255) NOT NULL,
+                owner VARCHAR(255) NOT NULL,
                 comment TEXT,
                 cacheinfo TEXT,
-                status VARCHAR(50) CHECK(status IN ("done", "not done", "not reviewed")) NOT NULL DEFAULT "not reviewed",
+                status TEXT DEFAULT \'not reviewed\',  -- Escape single quotes
                 scriptData TEXT,
                 url TEXT
-               )')
+                )")
+
+
 
 puts 'Tables have been created successfully!'
 

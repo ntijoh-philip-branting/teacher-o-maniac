@@ -40,7 +40,7 @@ class ForkList extends HTMLElement {
         const data = {
             full_name: this.full_name,
             comment: comment,
-            option: selectedOption ? selectedOption.value : null // Handle case if no option is selected
+            status: selectedOption ? selectedOption.value : null // Handle case if no option is selected
         };
         console.log(data)
     

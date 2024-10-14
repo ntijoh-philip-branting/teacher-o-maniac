@@ -96,12 +96,11 @@ async #show_repo(e) {
     const input_name = e.detail.search_name;
 
     let forks;
+    let from_;
 
     try {
         // First, attempt to fetch forks from the backend
         const response = await fetch(`/forks/${input_name}`); // Use the updated endpoint
-
-        console.log(response.cacheinfo)
 
         if (!response.ok) {
             throw new Error('Failed to fetch forks from the backend');
@@ -109,54 +108,81 @@ async #show_repo(e) {
 
         // Parse the response as JSON
         const jsonResponse = await response.json();
-        forks = jsonResponse.data; // Ensure to extract the data property from the response
+        
+        let stringyforks = jsonResponse.data; // Ensure to extract the data property from the response
+        
+        forks = JSON.parse(stringyforks.cacheinfo)
+        // forks = JSON.parse(stringyforks)
+        console.log(forks)
 
+        from_ = 'db'
     } catch (error) {
         console.error('Error fetching forks from backend:', error);
 
         // If fetching fails, use getForks as a fallback
         forks = await getForks(input_name, e.detail.repo_name);
 
-
+        from_ = 'api'
     }
+
+    // Get the repository manifest data
+    let manData = null;
+    let repoName = [];
+    let url = [];
+    let full_name = [];
+    let owner = [];
+    let forkcacheinfo = [];
+    let i = 0;
 
     // Now that we have forks, let's save additional information for each
     for (const repo of forks) {
-        let repoName = repo.name;
-        let url = repo.html_url;
-        let full_name = repo.full_name;
-        let owner = repo.owner.login;
+        console.log(from_)
+       repoName.push(repo.name);
+       url.push(repo.html_url);
+       full_name.push(repo.full_name);
+       owner.push(repo.owner.login);
+       forkcacheinfo.push(repo);
+       
 
-        // Get the repository manifest data
-        let manData = null;
+
+
+
         try {
-            manData = await getRepositoryManifest(owner, repoName); // Corrected parameter usage
+            manData = await getRepositoryManifest(owner[i], repoName[i]); // Corrected parameter usage
         } catch (error) {
             console.error(error);
             manData = null; // Set to null on failure
         }
 
-        const data = {
-            name: full_name,   // Save the full name of the repo
-            comment: '',
-            cacheinfo: forks,
-            status: '',
-            scriptData: manData ? manData.scriptData : '', // If available
-            url: url // The URL of the repo
-        }
+        
 
-        // Here, you can save each forked repo along with its manifest data to the database
-        await fetch('/forks/add', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(data),
-        });
+
 
         // Append the forked repo to the UI
-        this.divContent.appendChild(new ForkList(full_name, manData, url));
+        this.divContent.appendChild(new ForkList(full_name[i], manData, url[i]));
+        i++
     }
+
+    const data = {
+        name: input_name,   
+        owner: full_name,
+        comment: '',
+        cacheinfo: forkcacheinfo,
+        status: '',
+        scriptData: manData ? manData.scriptData : '', // If available
+        url: url // The URL of the repo
+    }
+    console.log(data)
+
+    // Here, you can save each forked repo along with its manifest data to the database
+    await fetch('/forks/add', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    });
+
 }
 
   
