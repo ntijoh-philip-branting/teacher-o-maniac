@@ -6,3 +6,4 @@ app.rb
 db/database.db
 app.rb
 config.ru
+db/database.db
