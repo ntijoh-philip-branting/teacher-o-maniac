@@ -1,9 +1,7 @@
-
-
-
-database.db
-
-app.rb
 public/js/private.js
+db/database.db
 views/apiTestcases.erb
-
+.env
+app.rb
+config.ru
+.solargraph.yml
