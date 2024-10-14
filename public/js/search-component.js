@@ -9,12 +9,23 @@ class SearchEvent extends CustomEvent {
   }
 }
 
-class SearchItem extends HTMLElement {
+class ProfileEvent extends CustomEvent {
+  constructor() {
+    super("profile-checked", {
+      bubbles: true,
+      composed: true,
+      cancelable: true,
+    });
+  }
+}
+
+class HeaderBarItem extends HTMLElement {
   constructor() {
     super();
     this.attachShadow({ mode: "open" });
     this.shadowRoot.appendChild(this.#template());
     this.input = this.shadowRoot.querySelector("#filter");
+    this.icon = this.shadowRoot.querySelector("#icon");
   }
 
   connectedCallback() {
@@ -23,6 +34,9 @@ class SearchItem extends HTMLElement {
         const value = this.input.value;
         this.dispatchEvent(new SearchEvent(value));
       }
+    });
+    this.icon.addEventListener("click", () => {
+      this.dispatchEvent(new ProfileEvent());
     });
   }
 
@@ -48,9 +62,7 @@ class SearchItem extends HTMLElement {
     
         <div class="header">
           <div class="input-field">
-            <a href="/account" class="icon-button">
-              <i class="material-icons prefix" style="margin-top: 5px;">account_circle</i>
-            </a>
+            <i id="icon" class="material-icons prefix" style="margin-top: 5px;">account_circle</i>
             <input id="filter" type="text" class="validate">
           </div>
         </div>
@@ -59,4 +71,4 @@ class SearchItem extends HTMLElement {
   }
 }
 
-window.customElements.define("search-item", SearchItem);
+window.customElements.define("search-item", HeaderBarItem);
