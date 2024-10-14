@@ -10,9 +10,9 @@ class Profile extends HTMLElement {
     this.shadowRoot.innerHTML = "<p>Loading user data...</p>"; // Show loading state
     const data = await this.fetchUser();
     console.log(`Fetched data: ${data}`);
-    
+
     if (data && data.user) {
-        this.user = data.user
+      this.user = data.user;
       this.shadowRoot.innerHTML = ""; // Clear loading state
       this.shadowRoot.appendChild(this.#template());
     } else {
@@ -39,16 +39,18 @@ class Profile extends HTMLElement {
 
     if (this.user) {
       template.innerHTML = `
-          <img src="${this.user.avatar_url}" alt="Image not found">
-          <h1>Välkommen ${this.user.username}</h1>
-          <pre>Repos: ${this.user.public_repos}</pre>
-          `;
-      
+        <img src="${this.user.avatar_url}" alt="Image not found">
+        <h1>Välkommen ${this.user.username}</h1>
+        <pre>Repos: ${this.user.public_repos}</pre>
+        <button id="return-home">Return to Home</button>
+      `;
     } else {
-        template.innerHTML = `
-          <p>User Data is not available</p>
-        `
+      template.innerHTML = `
+        <p>User Data is not available</p>
+        <button id="return-home">Return to Home</button>
+      `;
     }
+
     return template.content.cloneNode(true);
   }
 }
