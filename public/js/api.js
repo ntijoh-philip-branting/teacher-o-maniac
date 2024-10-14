@@ -118,6 +118,9 @@ export async function getRepositoryInfo(username, repository) {
 
 export async function fetchFile(username, repository, filePath) {
   const fileUrl = `https://api.github.com/repos/${username}/${repository}/contents/${filePath}`;
+
+
+  
   try {
     const response = await fetch(fileUrl, {
       method: "GET",
@@ -128,9 +131,16 @@ export async function fetchFile(username, repository, filePath) {
     });
 
     if (response.ok) {
-      const fileData = await response.json();
-      const decodedContent = atob(fileData.content);  // Keep base64 decoding
-      return decodedContent;  // Return decoded content
+      const fileData = await response.json(); // Get the response data
+      
+      // Check if the file is a JSON file based on the filePath extension
+      if (filePath.endsWith('.json')) {
+        const decodedContent = atob(fileData.content); // Decode base64 content
+        return JSON.parse(decodedContent); // Parse to JSON object
+      } else {
+        // If it's not a JSON file, return the decoded content as a string
+        return atob(fileData.content); // Return raw decoded string
+      }
     } else {
       console.error(`Error fetching file ${filePath}: ${response.status}`);
       return null;
@@ -141,10 +151,14 @@ export async function fetchFile(username, repository, filePath) {
   }
 }
 
+
 export async function getRepositoryManifest(username, repository) {
+
+
   const manifestFilePath = ".manifest.json";
   const repoManifest = await fetchFile(username, repository, manifestFilePath);
 
+  
   if (repoManifest && repoManifest.filePath) {
     const scriptFileData = await fetchFile(username, repository, repoManifest.filePath);
     return {
@@ -156,6 +170,6 @@ export async function getRepositoryManifest(username, repository) {
   }
 }
 
-window.onload = function () {
-  index();
-};
+// window.onload = function () {
+//   index();
+// };

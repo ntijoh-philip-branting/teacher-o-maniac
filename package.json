@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@material/web": "^2.2.0",
+    "prismjs": "^1.29.0"
+  }
+}
