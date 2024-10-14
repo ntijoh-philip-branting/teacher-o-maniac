@@ -35,7 +35,7 @@ class DatabaseSeeder
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         github_id INTEGER UNIQUE,
         username TEXT,
-        name TEXT NOT NULL,
+        name TEXT,
         password TEXT,
         avatar_url TEXT,
         html_url TEXT,
