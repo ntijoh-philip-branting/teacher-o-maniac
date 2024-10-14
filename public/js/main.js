@@ -132,8 +132,8 @@ class MainComponent extends HTMLElement {
         forks = await getForks(mainUser, mainRepo);
         this.#cacheForks(forks, mainRepo);
       } else {
-        // Cache fetch successful
-        forks = jsonResponse.data.map((entry) => entry.data); // Extract forks from cache
+        console.log(`Returned: ${jsonResponse}`)
+        forks = jsonResponse.data
       }
     } catch (error) {
       console.error("Error fetching forks from backend:", error);
@@ -149,19 +149,23 @@ class MainComponent extends HTMLElement {
     let url = [];
     let full_name = [];
     let owner = [];
-    let forkcacheinfo = [];
     let i = 0;
 
     // Now that we have forks, let's save additional information for each
     for (const repo of forks) {
-      repoName.push(repo.name);
-      url.push(repo.html_url);
-      full_name.push(repo.full_name);
-      owner.push(repo.owner.login);
-      forkcacheinfo.push(repo);
+
+      if (repo && repo.name ) {  
+        repoName.push(repo.name);
+        url.push(repo.html_url);
+        full_name.push(repo.full_name);
+        owner.push(repo.owner.login);
+
+      } else {
+        console.error("Invalid repository data:", repo);
+      }
 
       try {
-        manData = await getRepositoryManifest(owner[i], repoName[i]); // Corrected parameter usage
+        manData = await getRepositoryManifest(owner[i], repoName[i]); 
       } catch (error) {
         console.error(error);
         manData = null; // Set to null on failure
@@ -171,26 +175,6 @@ class MainComponent extends HTMLElement {
       this.divContent.appendChild(new ForkList(full_name[i], manData, url[i]));
       i++;
     }
-
-    const data = {
-      name: mainRepo,
-      owner: full_name,
-      comment: "",
-      cacheinfo: forkcacheinfo,
-      status: "",
-      scriptData: manData ? manData.scriptData : "", // If available
-      url: url, // The URL of the repo
-    };
-    console.log(data);
-
-    // Here, you can save each forked repo along with its manifest data to the database
-    await fetch("/cache/add", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
   }
 
   async #fetchUserStatus() {
