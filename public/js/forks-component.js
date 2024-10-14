@@ -1,57 +1,14 @@
-class Comment extends HTMLElement {
-  constructor(comment, status) {
-    super();
-    this.attachShadow({ mode: "open" });
-    this.comment = comment;
-    this.status = status;
-    this.shadowRoot.appendChild(this.#template());
-    this.forked = this.shadowRoot.querySelector("#fork");
-  }
-
-  #template() {
-    const template = document.createElement("template");
-    template.innerHTML = `
-          <style>
-  
-              @import url('https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css');
-              @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
-  
-                              .repo-card {
-                              box-shadow: 5px 5px 10px rgba(0, 0, 0, 0.2);
-                      padding: 16px;
-                      border: 1px solid #e0e0e0;
-                      border-radius: 4px;
-                      margin-bottom: 16px;
-                      background-color: #ffffff;
-                  }
-                  .repo-title {
-                      font-weight: bold;
-                      font-size: 18px;
-                  }
-  
-                  
-              </style>
-              <div class="repo-card" style="width:300px;">
-                  <p class="repo-title">${this.comment}</p>
-                <label class="mdl-radio mdl-js-radio mdl-js-ripple-effect" for="radio-3">
-                    <input type="radio" id="radio-3" class="mdl-radio__button" name="options" value="not reviewed" checked>
-                    <span class="mdl-radio__label" style="display: flex; align-items: center;">
-                        <!-- <i class="material-icons">refresh</i>  --> ${this.status}
-                    </span>
-                </label>
-              </div>
-  
-  
-        `;
-    return template.content.cloneNode(true);
-  }
-}
-
 class ForkList extends HTMLElement {
   constructor(path_name, manData, url) {
     super();
     this.attachShadow({ mode: "open" });
-    this.path_name = path_name;
+    this.string_path = path_name;
+    this.hex_path = path_name
+      .split("")
+      .map((char) => char.charCodeAt(0).toString(16))
+      .join("");
+    console.log(`Converted path ${this.string_path} into ${this.hex_path}`);
+    // ^ Converts the path conveniently into HEX to avoid issues with '/' :3
     this.url = url;
 
     if (manData) {
@@ -64,7 +21,9 @@ class ForkList extends HTMLElement {
 
     this.shadowRoot.appendChild(this.#template());
     this.btn = this.shadowRoot.querySelector(".btn");
+    this.commentSpace = this.shadowRoot.querySelector("#comments");
     this.#makeTest(this.repoScriptData, this.repoManifest);
+    this.#displayComments();
     Prism.highlightElement(this.shadowRoot.querySelector("code"));
   }
 
@@ -86,17 +45,17 @@ class ForkList extends HTMLElement {
       // Prepare the data to send
 
       const formData = new FormData();
-      formData.append("path_name", this.path_name);
+      formData.append("path_name", this.string_path);
       formData.append("comment", comment);
       formData.append("status", status);
 
-      console.log(formData);
+      console.log(`Formdata = ${formData}`);
 
       try {
         // Make a PUT request to the backend
         const response = await fetch(`/comments`, {
           method: "POST",
-          body: formData
+          body: formData,
         });
 
         if (response.ok) {
@@ -108,21 +67,29 @@ class ForkList extends HTMLElement {
       } catch (error) {
         console.error("Fetch error:", error);
       }
-
-      this.comments = await this.#getComments();
-      if (this.comments.length > 0) {
-        this.addComments();
-      }
+      this.#displayComments();
     });
+  }
+
+  async #displayComments() {
+    this.comments = await this.#getComments();
+    console.log("Number of comments:", this.comments.length); // Log the number of comments
+    if (this.comments.length > 0) {
+      this.addComments();
+    } else {
+      console.log("No comments to display.");
+    }
   }
 
   async #getComments() {
     try {
-      const response = await fetch(`/comments/${this.path_name}`, {
+      const response = await fetch(`/comments?path_name=${this.string_path}`, {
         method: "GET",
       });
       if (response.ok) {
-        return await response.json();
+        const data = await response.json();
+        console.log("Fetched comments:", data); // Log the full response
+        return data.comments || []; // Return the comments array
       } else {
         console.error("Error fetching comments:", response.statusText);
         return [];
@@ -134,11 +101,12 @@ class ForkList extends HTMLElement {
   }
 
   addComments() {
+    this.commentSpace.innerHTML = '';
     this.comments.forEach((element) => {
       let comment = element.comment;
       let status = element.status;
 
-      this.divContent.appendChild(new RepoCard(comment, status));
+      this.commentSpace.appendChild(new Comment(comment, status));
     });
   }
 
@@ -257,7 +225,7 @@ class ForkList extends HTMLElement {
 
             <div class="repo-card">
     <div class="mdl-card__actions mdl-card--border">
-        <p class="repo-title">${this.path_name}</p>
+        <p class="repo-title">${this.string_path}</p>
         <pre><code class="language-javascript">${this.#escapeHTML(
           this.repoScriptData
         )}</code></pre>
@@ -301,8 +269,7 @@ class ForkList extends HTMLElement {
             </button>
         </form>
     </div>
-
-    <div>
+    <div id="comments">
 
     </div>
 </div>

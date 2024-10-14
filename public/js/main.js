@@ -84,12 +84,13 @@ class MainComponent extends HTMLElement {
     try {
       const response = await fetch(`cache/${input_name}`);
       if (response.ok) {
-        const data = await response.json(); // Parse the response
-        console.log("Cache data:", data); // Log the full cache data for debugging
+        const cache = await response.json(); // Parse the response
+        const logMessage = cacheString.length > 100 ? cacheString.slice(0, 100) + "..." : cacheString;
+        console.log("Cache found:", cacheLog); // Log the full cache data for debugging
 
         // Ensure data is structured as expected
-        if (data.result === "success" && data.data && data.data.cacheinfo) {
-          repos = data.data.cacheinfo; // Extract cacheinfo
+        if (cache.result === "success" && cache.data) {
+          repos = cache.data; // Extract cacheinfo
 
           // Check if repos is a string and needs parsing
           if (typeof repos === "string") {
@@ -118,16 +119,17 @@ class MainComponent extends HTMLElement {
       // Fetch from the GitHub API if cache is not available
       repos = await getRepositories(input_name);
 
+      const repoString = JSON.stringify(repos);
+      console.log(`Stringified JSON Array Data: ${repoString}`)
+
+      const cacheData = new FormData();
+      cacheData.append("name", input_name);
+      cacheData.append("cacheinfo", repoString);
+
       // Insert the fetched repositories into the database by POSTing them to `/cache`
       await fetch("/cache", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: input_name,
-          cacheinfo: repos, // Send the entire array of repositories to cache
-        }),
+        body: cacheData
       });
     }
 
@@ -149,6 +151,12 @@ class MainComponent extends HTMLElement {
     }
   }
 
+  async #cacheData(name, data){
+    const cacheData = new FormData();
+    cacheData.append("name", name);
+    cacheData.append("cacheinfo", data)
+  }
+
   async #show_repo(e) {
     this.divContent.innerHTML = "";
     this.divContent.style.gridTemplateColumns = "repeat(2, 1fr)";
@@ -159,7 +167,7 @@ class MainComponent extends HTMLElement {
 
     try {
       // First, attempt to fetch forks from the backend
-      const response = await fetch(`/forks/${input_name}`); // Use the updated endpoint
+      const response = await fetch(`/cache/${input_name}`); // Use the updated endpoint
 
       if (!response.ok) {
         throw new Error("Failed to fetch forks from the backend");
@@ -225,7 +233,7 @@ class MainComponent extends HTMLElement {
     console.log(data);
 
     // Here, you can save each forked repo along with its manifest data to the database
-    await fetch("/forks/add", {
+    await fetch("/cache/add", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

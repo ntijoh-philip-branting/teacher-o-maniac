@@ -170,7 +170,6 @@ class Backend < Sinatra::Base
 
   post '/cache' do
     @logger.info("POST /cache called with params: #{params.inspect}")
-    content_type :json
 
     # Validate required params
     unless params[:name] && params[:cacheinfo]
@@ -186,15 +185,24 @@ class Backend < Sinatra::Base
   get '/cache/:id' do
     @logger.info("GET /cache/#{params[:id]} called")
     content_type :json
-    cache_entry = db.execute('SELECT * FROM cache WHERE id = ?', params[:id]).first
-
+  
+    cache_entry = db.execute('SELECT * FROM cache WHERE name = ?', params[:id]).first
+  
     if cache_entry
-      { result: 'success', data: cache_entry }.to_json
+      @logger.info("Found Cache: #{cache_entry}")
+      begin
+        parsed_cache = JSON.parse(cache_entry['cacheinfo'])
+        { result: 'success', data: parsed_cache }.to_json
+      rescue JSON::ParserError => err
+        @logger.error("JSON parsing error: #{err.message}") # Log the error
+        { result: 'error', message: 'Failed to parse cache info.' }.to_json
+      end
     else
       @logger.info("Cache entry not found for id: #{params[:id]}")
       { result: 'error', message: 'Cache entry not found.' }.to_json
     end
   end
+  
 
   put '/cache/:id' do
     @logger.info("PUT /cache/#{params[:id]} called with params: #{params.inspect}")
@@ -230,15 +238,19 @@ class Backend < Sinatra::Base
       halt 400, { error: 'Missing path_name, comment, or status.' }.to_json
     end
 
-    db.execute("INSERT INTO comments (path_name, comment, status) VALUES (?,?,?)", [params[:path_name], params[:comment], params[:status]])
+    db.execute("INSERT INTO comments (path_name, comment, status) VALUES (?,?,?)", [params[:path_name].strip, params[:comment], params[:status]])
     @logger.info("Successfully stored comment at #{params[:path_name]}")
     { result: 'success', message: 'Comment Inserted'}.to_json
   end
 
-  get '/comments/:path_name' do
-    @logger.info("GET comments at #{path_name} Called ")
-    comments = db.execute("SELECT * FROM comments WHERE path_name = ?", path_name)
+  get '/comments' do
+    path_name = params[:path_name].strip
+    @logger.info("GET comments at #{path_name} Called")
+    comments = db.execute("SELECT * FROM comments WHERE path_name = ? ORDER BY id DESC", path_name)
+    #comments_all = db.execute("SELECT * from comments")
+    #@logger.info("Reference of all comments saved: #{comments_all}")
     if comments
+      @logger.info("Found following comments for path #{path_name}:\n#{comments}")
       { result: 'success', comments: comments }.to_json
     else
       @logger.info("No comments found for path: #{path_name}")
