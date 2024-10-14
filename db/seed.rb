@@ -51,6 +51,7 @@ class DatabaseSeeder
     @db.execute(<<-SQL
       CREATE TABLE cache (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fork_of TEXT NOT NULL DEFAULT "none",
         name TEXT NOT NULL UNIQUE,
         cacheinfo TEXT NOT NULL
       )

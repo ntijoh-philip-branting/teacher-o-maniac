@@ -177,7 +177,12 @@ class Backend < Sinatra::Base
       halt 400, { error: 'Missing name or cache info.' }.to_json
     end
 
-    db.execute('INSERT INTO cache (name, cacheinfo) VALUES (?, ?)', [params[:name], params[:cacheinfo]])
+    if params[:fork_of]
+      @logger.info("Current cache is fork of #{params[:fork_of]}")
+      db.execute('INSERT INTO cache (name, cacheinfo, fork_of) VALUES (?, ?,?)', [params[:name], params[:cacheinfo], params[:fork_of]])
+    else
+      db.execute('INSERT INTO cache (name, cacheinfo) VALUES (?, ?)', [params[:name], params[:cacheinfo]])
+    end
     @logger.info("Cache entry created for name: #{params[:name]}")
     { result: 'success', message: 'Cache entry created!' }.to_json
   end
@@ -186,22 +191,45 @@ class Backend < Sinatra::Base
     @logger.info("GET /cache/#{params[:id]} called")
     content_type :json
   
-    cache_entry = db.execute('SELECT * FROM cache WHERE name = ?', params[:id]).first
-  
+    if params[:is_fork]
+      @logger.info("Current cache is fork")
+      cache_entry = db.execute('SELECT * FROM cache WHERE fork_of = ?', params[:id])
+    else
+      cache_entry = db.execute('SELECT * FROM cache WHERE name = ?', params[:id]).first
+    end
+    @logger.info("Logged cache_entry as #{cache_entry}")
+
     if cache_entry
-      @logger.info("Found Cache: #{cache_entry}")
-      begin
-        parsed_cache = JSON.parse(cache_entry['cacheinfo'])
-        { result: 'success', data: parsed_cache }.to_json
-      rescue JSON::ParserError => err
-        @logger.error("JSON parsing error: #{err.message}") # Log the error
-        { result: 'error', message: 'Failed to parse cache info.' }.to_json
+      if cache_entry != []
+        @logger.info("Found Cache: #{cache_entry['name']}")
+    
+        begin
+          # Parse the cacheinfo from the database entry
+          parsed_cache = JSON.parse(cache_entry['cacheinfo'])
+    
+          # Create a log message based on the length of the cacheinfo
+          log_message = cache_entry['cacheinfo'].length > 100 ? 
+          "#{cache_entry['cacheinfo'][0, 100]}..." : 
+          cache_entry['cacheinfo']
+          @logger.info("Cache found: #{log_message}")  # Log the cache data for debugging
+    
+          { result: 'success', data: parsed_cache }.to_json
+        rescue JSON::ParserError => err
+          @logger.error("JSON parsing error: #{err.message}") # Log the error
+          { result: 'error', message: 'Failed to parse cache info.' }.to_json
+        end
+      elsif cache_entry.length > 0
+        @logger.info("Found cache with items")
+      else
+        @logger.info("Cache entry not found for id: #{params[:id]}")
+        { result: 'error', message: 'Cache entry not found.' }.to_json
       end
     else
       @logger.info("Cache entry not found for id: #{params[:id]}")
       { result: 'error', message: 'Cache entry not found.' }.to_json
     end
   end
+  
   
 
   put '/cache/:id' do

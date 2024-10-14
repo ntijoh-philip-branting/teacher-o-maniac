@@ -9,13 +9,7 @@ import { getClientSecret, getClientID } from "./private.js";
 
 class MainComponent extends HTMLElement {
   static get observedAttributes() {
-    return [
-      "search",
-      "repo_name",
-      "repo_url",
-      "search_name",
-      "redirect_profile",
-    ];
+    return ["search", "repoName", "repoUrl", "searchName", "redirectProfile"];
   }
 
   constructor() {
@@ -23,127 +17,91 @@ class MainComponent extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.shadowRoot.appendChild(this.#template());
     this.divContent = this.shadowRoot.querySelector(".content");
-    this.redirectProfile = this.getAttribute("redirect_profile") === "true";
-    this.addEventListener("searched", this.#search_item.bind(this));
-    this.addEventListener("forked", this.#show_repo.bind(this));
-    this.addEventListener("profile-checked", this.#show_profile.bind(this));
+    this.redirectProfile = this.getAttribute("redirectProfile") === "true";
+    this.addEventListener("searched", this.#showSearch.bind(this));
+    this.addEventListener("forked", this.#showFork.bind(this));
+    this.addEventListener("profile-checked", this.#showProfile.bind(this));
   }
 
   connectedCallback() {
     console.log("Connected callback running");
     if (window.location.pathname === "/profile") {
-      this.#show_profile();
+      this.#showProfile();
     }
   }
 
-  async #show_profile() {
-    console.log("Attempting User Verification");
-    const usr_status = await this.#fetchUserStatus();
+  async #showProfile() {
+    console.log("Running Show Profile");
+    const userStatus = await this.#fetchUserStatus();
 
-    if (!usr_status.logged_in) {
-      // Replace with your GitHub OAuth App Client ID and redirect URI
+    if (!userStatus.logged_in) {
       const clientId = getClientID();
-      const redirectUri = "http://localhost:9292/callback"; // Your full callback URL
-
-      // Construct the GitHub OAuth URL
+      const redirectUrl = "http://localhost:9292/callback";
       const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
-        redirectUri
+        redirectUrl
       )}&scope=user`;
 
-      // Redirect the user to GitHub's OAuth page
       window.location.href = githubAuthUrl;
     } else {
       const profileElement = document.createElement("user-profile");
-
       document.body.innerHTML = "";
-
       document.body.appendChild(profileElement);
     }
   }
 
-  async #fetchUserStatus() {
-    const response = await fetch("/api/user", { method: "GET" });
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.logged_in) {
-        console.log(`User ${data.user.username} already logged in`);
-        return { logged_in: true, user: data.user };
-      }
-    }
-    console.log(`No user logged in, requesting Logon`);
-    return { logged_in: false, user: null };
-  }
-  async #search_item(e) {
+  async #showSearch(e) {
+    console.log("Running Show Search");
     this.divContent.innerHTML = "";
     this.divContent.style.gridTemplateColumns = "repeat(3,1fr)";
 
-    const input_name = e.detail.search;
+    const inputName = e.detail.search;
     let repos;
 
     try {
-      const response = await fetch(`cache/${input_name}`);
+      const response = await fetch(`cache/${inputName}`);
       if (response.ok) {
-        const cache = await response.json(); // Parse the response
-        const logMessage = cacheString.length > 100 ? cacheString.slice(0, 100) + "..." : cacheString;
-        console.log("Cache found:", cacheLog); // Log the full cache data for debugging
-
-        // Ensure data is structured as expected
+        const cache = await response.json();
         if (cache.result === "success" && cache.data) {
-          repos = cache.data; // Extract cacheinfo
+          repos = cache.data;
 
-          // Check if repos is a string and needs parsing
           if (typeof repos === "string") {
             repos = JSON.parse(repos);
           }
 
-          // Ensure repos is an array, even if it's just a single object
           if (!Array.isArray(repos)) {
-            repos = [repos]; // Wrap in array if it's not already an array
+            repos = [repos];
           }
         } else {
           console.log(`Incorrect datatype recieved, overwriting...`);
         }
       } else {
         console.log(
-          `Cache response incorrect. Resuming backup generation for ${input_name}`
+          `Cache response incorrect. Resuming backup generation for ${inputName}`
         );
       }
     } catch (error) {
       console.log(
-        `Cache not found, generating new cache for user ${input_name}`
+        `Cache not found, generating new cache for user ${inputName}`
       );
     }
 
     if (!repos) {
-      // Fetch from the GitHub API if cache is not available
-      repos = await getRepositories(input_name);
+      repos = await getRepositories(inputName);
 
       const repoString = JSON.stringify(repos);
-      console.log(`Stringified JSON Array Data: ${repoString}`)
+      console.log(`Stringified JSON Array Data: ${repoString}`);
 
-      const cacheData = new FormData();
-      cacheData.append("name", input_name);
-      cacheData.append("cacheinfo", repoString);
-
-      // Insert the fetched repositories into the database by POSTing them to `/cache`
-      await fetch("/cache", {
-        method: "POST",
-        body: cacheData
-      });
+      this.#cacheData(inputName, repoString);
     }
 
-    // Check if repos is defined before trying to iterate
     if (repos) {
-      // Iterate through the repositories and display them
       repos.forEach((element) => {
         let repoName = element.name;
         let url = element.html_url;
         let forkCount = element.forks;
 
-        // Add each repository to the content area
         this.divContent.appendChild(
-          new RepoCard(repoName, url, input_name, forkCount)
+          new RepoCard(repoName, url, inputName, forkCount)
         );
       });
     } else {
@@ -151,44 +109,38 @@ class MainComponent extends HTMLElement {
     }
   }
 
-  async #cacheData(name, data){
-    const cacheData = new FormData();
-    cacheData.append("name", name);
-    cacheData.append("cacheinfo", data)
-  }
-
-  async #show_repo(e) {
+  async #showFork(e) {
+    console.log("Running Show Fork");
     this.divContent.innerHTML = "";
     this.divContent.style.gridTemplateColumns = "repeat(2, 1fr)";
-    const input_name = e.detail.search_name;
+    const mainUser = e.detail.search_name;
+    const mainRepo = e.detail.repo_name;
 
     let forks;
-    let from_;
 
     try {
-      // First, attempt to fetch forks from the backend
-      const response = await fetch(`/cache/${input_name}`); // Use the updated endpoint
+      const response = await fetch(`/cache/${mainRepo}?is_fork=true`);
 
       if (!response.ok) {
         throw new Error("Failed to fetch forks from the backend");
       }
 
-      // Parse the response as JSON
       const jsonResponse = await response.json();
 
-      let stringyforks = jsonResponse.data; // Ensure to extract the data property from the response
-
-      forks = JSON.parse(stringyforks.cacheinfo);
-      // forks = JSON.parse(stringyforks)
-      console.log(forks);
-
-      from_ = "db";
+      if (jsonResponse.result === "error") {
+        console.log(`Message: ${jsonResponse.message}`);
+        forks = await getForks(mainUser, mainRepo);
+        this.#cacheForks(forks, mainRepo);
+      } else {
+        // Cache fetch successful
+        forks = jsonResponse.data.map((entry) => entry.data); // Extract forks from cache
+      }
     } catch (error) {
       console.error("Error fetching forks from backend:", error);
       // If fetching fails, use getForks as a fallback
-      forks = await getForks(input_name, e.detail.repo_name);
+      forks = await getForks(mainRepo, e.detail.repoName);
 
-      from_ = "api";
+      this.#cacheForks(forks, mainRepo);
     }
 
     // Get the repository manifest data
@@ -202,7 +154,6 @@ class MainComponent extends HTMLElement {
 
     // Now that we have forks, let's save additional information for each
     for (const repo of forks) {
-      console.log(from_);
       repoName.push(repo.name);
       url.push(repo.html_url);
       full_name.push(repo.full_name);
@@ -222,7 +173,7 @@ class MainComponent extends HTMLElement {
     }
 
     const data = {
-      name: input_name,
+      name: mainRepo,
       owner: full_name,
       comment: "",
       cacheinfo: forkcacheinfo,
@@ -242,27 +193,55 @@ class MainComponent extends HTMLElement {
     });
   }
 
+  async #fetchUserStatus() {
+    const response = await fetch("/api/user", { method: "GET" });
+
+    if (response.ok) {
+      const data = await response.json();
+      if (data.logged_in) {
+        console.log(`User ${data.user.username} already logged in`);
+        return { logged_in: true, user: data.user };
+      }
+    }
+    console.log(`No user logged in, requesting Logon`);
+    return { logged_in: false, user: null };
+  }
+
+  async #cacheForks(forks, forkOf) {
+    forks.forEach((fork) => {
+      console.log(`Caching data of fork ${fork.full_name}`);
+      this.#cacheData(fork.full_name, JSON.stringify(fork), forkOf);
+    });
+  }
+
+  async #cacheData(name, data, forkOf = "none") {
+    const cacheData = new FormData();
+    cacheData.append("name", name);
+    cacheData.append("cacheinfo", data);
+    if (forkOf != "none") {
+      cacheData.append("fork_of", forkOf);
+    }
+
+    await fetch("/cache", {
+      method: "POST",
+      body: cacheData,
+    });
+  }
+
   #template() {
     const template = document.createElement("template");
     template.innerHTML = `
-
             <style>
                 .content{
-                
                 display:grid;
                 grid-template-columns: repeat(3,1fr);
                 justify-items: center;
                 row-gap: 20px;
-                
                 }
             </style>
-
             <search-item></search-item>
             <div class="content">
-
             </div>
-
-  
         `;
     return template.content.cloneNode(true);
   }
