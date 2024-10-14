@@ -46,14 +46,16 @@ class MainComponent extends HTMLElement {
                     repos = [repos]; // Wrap in array if it's not already an array
                 }
             } else {
-                throw new Error('Invalid cache data structure');
+                console.log(`Incorrect datatype recieved, overwriting...`);
             }
         } else {
-            throw new Error('Failed to fetch from cache');
+            console.log(`Cache response incorrect. Resuming backup generation for ${input_name}`);
         }
     } catch (error) {
-        console.log('Error fetching from cache:', error);
+        console.log(`Cache not found, generating new cache for user ${input_name}`);
+    }
 
+    if (!repos) {
         // Fetch from the GitHub API if cache is not available
         repos = await getRepositories(input_name);
 
