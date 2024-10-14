@@ -4,4 +4,4 @@ app.rb
 config.ru
 db/database.db
 public/js/private.js
-views/apiTestcases.erbdb/database.db
+views/apiTestcases.erb

@@ -34,7 +34,9 @@ class Backend < Sinatra::Base
   
   get '/' do
     logged_in = !!session[:github_user_id]
-    erb :apiTestcases, locals: { logged_in: logged_in }
+    session.delete(:redirect_profile)
+    print("Running main with local values: #{logged_in}")
+    erb :apiTestcases, locals: { logged_in: logged_in}
   end
 
   get '/api/login-status' do
@@ -78,12 +80,17 @@ class Backend < Sinatra::Base
       store_user_info(user_data)
       session[:github_user_id] = user_data['id']
       @logger.info("User successfully authenticated: #{user_data['login']}")
-      redirect '/'
+      redirect '/profile'
     else
       @logger.error("Authentication failed: #{token_info}")
       status 500
       { error: 'Authentication failed' }.to_json
     end
+  end
+
+  get '/profile' do
+    print("Redirecting to profile...")
+    erb :index
   end
 
   def store_user_info(user_data)

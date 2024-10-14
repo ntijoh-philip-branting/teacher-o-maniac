@@ -9,7 +9,7 @@ import { getClientSecret, getClientID } from "./private.js";
 
 class MainComponent extends HTMLElement {
   static get observedAttributes() {
-    return ["search", "repo_name", "repo_url", "search_name"];
+    return ["search", "repo_name", "repo_url", "search_name", "redirect_profile"];
   }
 
   constructor() {
@@ -17,10 +17,18 @@ class MainComponent extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.shadowRoot.appendChild(this.#template());
     this.divContent = this.shadowRoot.querySelector(".content");
+    this.redirectProfile = this.getAttribute('redirect_profile') === "true";
     this.addEventListener("searched", this.#search_item.bind(this));
     this.addEventListener("forked", this.#show_repo.bind(this));
     this.addEventListener("profile-checked", this.#show_profile.bind(this));
   }
+
+  connectedCallback() {
+    console.log("Connected callback running");
+    if (window.location.pathname === '/profile') {
+        this.#show_profile();
+    }
+  }  
 
   async #show_profile() {
     console.log("Attempting User Verification");
@@ -163,7 +171,6 @@ class MainComponent extends HTMLElement {
       from_ = "db";
     } catch (error) {
       console.error("Error fetching forks from backend:", error);
-
       // If fetching fails, use getForks as a fallback
       forks = await getForks(input_name, e.detail.repo_name);
 
