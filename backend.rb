@@ -191,7 +191,20 @@ class Backend < Sinatra::Base
     @logger.info("GET /cache/#{params[:id]} called")
     content_type :json
   
-    if params[:is_fork]
+    if params[:is_search]
+      search_query = "#{params[:id]}%"
+      search_entries = db.execute('SELECT name FROM cache WHERE name LIKE ?', search_query)
+
+      @logger.info("Working with entries searched up as: #{search_entries}")
+      if search_entries.any?
+        @logger.info("Correctly adressed entries")
+        return { result: 'success', data: search_entries.map { |entry| entry['name'] } }.to_json
+      else
+        @logger.info("Failed to find entries")
+        return { result: 'error', data: 'null'}.to_json
+      end
+
+    elsif params[:is_fork]
       @logger.info("Current cache is fork")
       cache_entry = db.execute('SELECT * FROM cache WHERE fork_of = ?', params[:id])
     else
@@ -216,9 +229,9 @@ class Backend < Sinatra::Base
       end
 
       if caches_package.length > 0
-        { result: 'success', data: caches_package }.to_json
+        return { result: 'success', data: caches_package }.to_json
       else
-        { result: 'error', message: 'Caches failed to prase properly, package returned empty'}.to_json
+        return { result: 'error', message: 'Caches failed to prase properly, package returned empty'}.to_json
       end
     elsif cache_entry and not params [:is_fork]
       @logger.info("Found Cache: #{cache_entry['name']}")
@@ -227,14 +240,14 @@ class Backend < Sinatra::Base
         # Parse the cacheinfo from the database entry
         parsed_cache = JSON.parse(cache_entry['cacheinfo'])
   
-        { result: 'success', data: parsed_cache }.to_json
+        return { result: 'success', data: parsed_cache }.to_json
       rescue JSON::ParserError => err
         @logger.error("JSON parsing error: #{err.message}") # Log the error
-        { result: 'error', message: 'Failed to parse cache info.' }.to_json
+        return { result: 'error', message: 'Failed to parse cache info.' }.to_json
       end
     else
       @logger.info("Cache entry not found for id: #{params[:id]}")
-      { result: 'error', message: 'Cache entry not found.' }.to_json
+      return { result: 'error', message: 'Cache entry not found.' }.to_json
     end
   end
   
