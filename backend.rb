@@ -36,7 +36,7 @@ class Backend < Sinatra::Base
     logged_in = !!session[:github_user_id]
     session.delete(:redirect_profile)
     print("Running main with local values: #{logged_in}")
-    erb :apiTestcases, locals: { logged_in: logged_in}
+    erb :index, locals: { logged_in: logged_in}
   end
 
   get '/callback' do
